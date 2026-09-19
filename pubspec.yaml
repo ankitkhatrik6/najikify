@@ -1,0 +1,57 @@
+name: localdrop
+description: "Private peer-to-peer file transfer application for Linux desktop and Android."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management & Architecture
+  provider: ^6.1.2
+
+  # Local Persistence
+  sqflite: ^2.3.3
+  sqflite_common_ffi: ^2.3.3
+  path: ^1.9.0
+  path_provider: ^2.1.2
+
+  # Networking & HTTP Server Engine
+  shelf: ^1.4.1
+  shelf_web_socket: ^2.0.0
+  web_socket_channel: ^2.4.1
+  http: ^1.2.0
+
+  # Cryptography & Security
+  crypto: ^3.0.3
+  convert: ^3.1.1
+  uuid: ^4.3.3
+
+  # File Handling & Utilities
+  mime: ^1.0.5
+  file_picker: ^8.0.0
+  desktop_drop: ^0.4.4
+  permission_handler: ^11.3.0
+  intl: ^0.19.0
+
+  # QR Code Pairing
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.0.0
+
+  # System Information
+  device_info_plus: ^10.0.0
+  network_info_plus: ^5.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/
