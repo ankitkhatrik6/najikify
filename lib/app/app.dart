@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../core/constants/app_constants.dart';
 import '../features/transfers/incoming_transfer_dialog.dart';
-import '../services/database_service.dart';
 import '../services/discovery_service.dart';
 import '../services/history_service.dart';
 import '../services/network_service.dart';

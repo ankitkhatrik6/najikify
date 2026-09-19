@@ -21,14 +21,14 @@ void main() {
       );
 
       testFiles = [
-        TransferFile(
+        const TransferFile(
           id: 'file-1',
           transferId: 'tx-1',
           name: 'presentation.pdf',
           relativePath: 'presentation.pdf',
           size: 50 * 1024 * 1024, // 50 MB
         ),
-        TransferFile(
+        const TransferFile(
           id: 'file-2',
           transferId: 'tx-1',
           name: 'dataset.csv',

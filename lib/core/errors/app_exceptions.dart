@@ -12,8 +12,9 @@ class LocalDropException implements Exception {
 }
 
 class NetworkUnavailableException extends LocalDropException {
-  const NetworkUnavailableException([String message = 'No local network connection available. Connect to Wi-Fi or LAN.'])
-      : super(message, code: 'NETWORK_UNAVAILABLE');
+  const NetworkUnavailableException(
+      [super.message = 'No local network connection available. Connect to Wi-Fi or LAN.'])
+      : super(code: 'NETWORK_UNAVAILABLE');
 }
 
 class DeviceUnavailableException extends LocalDropException {
@@ -23,8 +24,9 @@ class DeviceUnavailableException extends LocalDropException {
 }
 
 class ConnectionLostException extends LocalDropException {
-  const ConnectionLostException([String message = 'The connection to the remote device was lost during transfer.'])
-      : super(message, code: 'CONNECTION_LOST');
+  const ConnectionLostException(
+      [super.message = 'The connection to the remote device was lost during transfer.'])
+      : super(code: 'CONNECTION_LOST');
 }
 
 class TransferRejectedException extends LocalDropException {
@@ -48,10 +50,11 @@ class FilePermissionException extends LocalDropException {
 }
 
 class SecurityValidationException extends LocalDropException {
-  const SecurityValidationException([String message = 'Session validation or checksum verification failed.'])
-      : super(message, code: 'SECURITY_VALIDATION_FAILED');
+  const SecurityValidationException(
+      [super.message = 'Session validation or checksum verification failed.'])
+      : super(code: 'SECURITY_VALIDATION_FAILED');
 }
 
 class PairingException extends LocalDropException {
-  const PairingException(String message) : super(message, code: 'PAIRING_FAILED');
+  const PairingException(super.message) : super(code: 'PAIRING_FAILED');
 }

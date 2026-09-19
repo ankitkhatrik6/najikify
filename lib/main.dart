@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/app.dart';
-import 'services/database_service.dart';
 import 'services/discovery_service.dart';
 import 'services/history_service.dart';
 import 'services/network_service.dart';

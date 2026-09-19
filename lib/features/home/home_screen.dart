@@ -26,7 +26,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isDragging = false;
-  List<FileEntityEntry> _draggedEntries = [];
 
   Future<void> _pickAndSendFiles(BuildContext context, Device targetDevice) async {
     final transferService = context.read<TransferService>();
@@ -146,7 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         if (dropped.isNotEmpty && devices.isNotEmpty) {
-          setState(() => _draggedEntries = dropped);
           // Show bottom sheet to select which device to send to
           if (context.mounted) {
             _showTargetDevicePicker(context, dropped);

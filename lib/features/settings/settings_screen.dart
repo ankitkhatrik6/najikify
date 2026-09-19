@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -214,10 +213,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Section: About
           _buildSectionHeader(context, 'About LocalDrop'),
-          ListTile(
-            title: const Text('Version'),
-            subtitle: const Text('${AppConstants.appVersion} (Offline LAN Peer-to-Peer)'),
-            leading: const Icon(Icons.info_outline),
+          const ListTile(
+            title: Text('Version'),
+            subtitle: Text('${AppConstants.appVersion} (Offline LAN Peer-to-Peer)'),
+            leading: Icon(Icons.info_outline),
           ),
           ListTile(
             title: const Text('Open Source Licenses'),

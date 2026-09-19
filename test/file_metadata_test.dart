@@ -6,7 +6,7 @@ import 'package:localdrop/models/transfer_protocol.dart';
 void main() {
   group('File Metadata & Protocol Serialization Tests', () {
     test('TransferFile JSON roundtrip', () {
-      final file = TransferFile(
+      const file = TransferFile(
         id: 'file-abc',
         transferId: 'tx-xyz',
         name: 'archive.tar.gz',
@@ -33,7 +33,7 @@ void main() {
     });
 
     test('Handshake and TransferInit protocol models serialize faithfully', () {
-      final hsReq = HandshakeRequest(
+      const hsReq = HandshakeRequest(
         deviceId: 'dev_1',
         deviceName: 'Android Node',
         platform: 'android',
@@ -45,7 +45,7 @@ void main() {
       expect(hsRestored.deviceId, 'dev_1');
       expect(hsRestored.platform, 'android');
 
-      final initReq = TransferInitRequest(
+      const initReq = TransferInitRequest(
         transferId: 't-123',
         senderDeviceId: 'dev_1',
         senderDeviceName: 'Android Node',
