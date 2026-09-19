@@ -21,9 +21,7 @@ dependencies:
   path_provider: ^2.1.2
 
   # Networking & HTTP Server Engine
-  shelf: ^1.4.1
-  shelf_web_socket: ^2.0.0
-  web_socket_channel: ^2.4.1
+  # The transfer server uses dart:io HttpServer directly; http is the client.
   http: ^1.2.0
 
   # Cryptography & Security
@@ -34,7 +32,7 @@ dependencies:
   # File Handling & Utilities
   mime: ^1.0.5
   file_picker: ^8.0.0
-  desktop_drop: ^0.4.4
+  desktop_drop: ^0.8.4
   permission_handler: ^11.3.0
   intl: ^0.19.0
 

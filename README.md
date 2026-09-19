@@ -49,7 +49,7 @@ LocalDrop turns any two devices on the same Wi-Fi or LAN into a direct transfer 
  | (announce)  | <-- peer presence, every 4s --------------- | (announce)  |
  +-------------+                                            +-------------+
  | HTTP server | <-- GET /handshake, /transfer/init -------- | Send engine |
- |  (shelf)    | --- stream file bytes over HTTP 53317 ----> |             |
+ |  dart:io    | --- stream file bytes over HTTP 53317 ----> |             |
  +-------------+                                            +-------------+
  | SQLite      |     local history, trusted devices         | SQLite      |
  +-------------+                                            +-------------+
@@ -216,7 +216,7 @@ localdrop/
 |------|--------|
 | UI / framework | Flutter (Material 3) |
 | State management | `provider` |
-| HTTP server / client | `shelf`, `shelf_web_socket`, `http` |
+| HTTP server / client | `dart:io` `HttpServer`, `http` |
 | Persistence | `sqflite` + `sqflite_common_ffi` (SQLite) |
 | Discovery | `dart:io` `RawDatagramSocket` (UDP multicast/broadcast) |
 | Security | `crypto`, `convert` (session tokens, checksums) |
