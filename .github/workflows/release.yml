@@ -92,6 +92,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Ensure Android SDK platform 36
+        run: |
+          SDKMANAGER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" "platforms;android-36" > /dev/null
+
       - name: Build release APK
         run: flutter build apk --release
 

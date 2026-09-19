@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.localdrop.app"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned to 36: flutter_plugin_android_lifecycle (via file_picker)
+    // requires compiling against Android API 36+.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
