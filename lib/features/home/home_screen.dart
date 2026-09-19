@@ -1,6 +1,7 @@
 import 'dart:io';
+
 import 'package:desktop_drop/desktop_drop.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -62,22 +63,20 @@ class _HomeScreenState extends State<HomeScreen> {
     List<FileEntityEntry> entriesToSend = [];
 
     if (choice == 'files') {
-      final result = await FilePicker.platform.pickFiles(allowMultiple: true);
-      if (result != null && result.files.isNotEmpty) {
-        for (final pf in result.files) {
-          if (pf.path != null) {
-            final f = File(pf.path!);
-            entriesToSend.add(FileEntityEntry(
-              file: f,
-              relativePath: pf.name,
-              size: pf.size,
-              isFolder: false,
-            ));
-          }
-        }
+      const typeGroup = XTypeGroup(label: 'files');
+      final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+      for (final xf in files) {
+        final f = File(xf.path);
+        final size = await f.length();
+        entriesToSend.add(FileEntityEntry(
+          file: f,
+          relativePath: xf.name,
+          size: size,
+          isFolder: false,
+        ));
       }
     } else if (choice == 'folder') {
-      final selectedDir = await FilePicker.platform.getDirectoryPath();
+      final selectedDir = await getDirectoryPath();
       if (selectedDir != null) {
         final dir = Directory(selectedDir);
         entriesToSend = await FileUtils.listDirectoryFiles(dir);

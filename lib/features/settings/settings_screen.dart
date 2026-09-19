@@ -1,4 +1,4 @@
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -67,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _pickDownloadPath(BuildContext context) async {
-    final selectedDirectory = await FilePicker.platform.getDirectoryPath();
+    final selectedDirectory = await getDirectoryPath();
     if (selectedDirectory != null && context.mounted) {
       await context.read<SettingsService>().updateDownloadPath(selectedDirectory);
     }

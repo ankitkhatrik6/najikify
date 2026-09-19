@@ -222,7 +222,7 @@ localdrop/
 | Security | `crypto`, `convert` (session tokens, checksums) |
 | Platform info | `device_info_plus`, `network_info_plus` |
 | Pairing | `qr_flutter`, `mobile_scanner` |
-| File handling | `file_picker`, `desktop_drop`, `path_provider` |
+| File handling | `file_selector`, `desktop_drop`, `path_provider` |
 
 ## Troubleshooting
 
