@@ -1,12 +1,12 @@
 [Desktop Entry]
-Name=LocalDrop
+Name=Najikify
 GenericName=Peer-to-Peer File Transfer
 Comment=Transfer files privately and securely across local Wi-Fi networks
-Exec=localdrop %U
-Icon=localdrop
+Exec=najikify %U
+Icon=najikify
 Terminal=false
 Type=Application
 Categories=Network;FileTransfer;Utility;
-Keywords=p2p;transfer;lan;wifi;share;localdrop;
+Keywords=p2p;transfer;lan;wifi;share;najikify;
 StartupNotify=true
-MimeType=x-scheme-handler/localdrop;
+MimeType=x-scheme-handler/najikify;
