@@ -28,8 +28,11 @@ class PairingService extends ChangeNotifier {
   PairingSession? get activeHostSession => _activeHostSession;
 
   /// Creates a new temporary pairing session for this host device to display as QR code.
-  PairingSession createHostSession() {
-    final primaryIp = _networkService.currentIp ?? '127.0.0.1';
+  /// Pass [ipAddress] to force a specific interface (e.g. user-selected Wi-Fi IP).
+  PairingSession createHostSession({String? ipAddress}) {
+    final primaryIp = (ipAddress != null && ipAddress.isNotEmpty)
+        ? ipAddress
+        : (_networkService.currentIp ?? '127.0.0.1');
     final session = PairingSession(
       sessionId: CryptoUtils.generateRandomToken(16),
       deviceId: _settingsService.deviceId,
