@@ -1,10 +1,10 @@
-# Contributing to LocalDrop
+# Contributing to Najikify
 
-Thanks for your interest in improving LocalDrop. This guide covers how to set up the project, the conventions used, and how to get a change merged.
+Thanks for your interest in improving Najikify. This guide covers how to set up the project, the conventions used, and how to get a change merged.
 
 ## Ways to Contribute
 
-- Report bugs and request features via [Issues](https://github.com/ankitkhatrik6/localdrop/issues)
+- Report bugs and request features via [Issues](https://github.com/ankitkhatrik6/najikify/issues)
 - Improve documentation
 - Fix bugs or implement features via pull requests
 - Test on hardware you have available (different Linux distros, Android versions)
@@ -14,8 +14,8 @@ Thanks for your interest in improving LocalDrop. This guide covers how to set up
 ### 1. Fork and clone
 
 ```bash
-git clone https://github.com/<your-username>/localdrop.git
-cd localdrop
+git clone https://github.com/<your-username>/najikify.git
+cd najikify
 ```
 
 ### 2. Install prerequisites
@@ -73,7 +73,7 @@ CI (`ci.yml`) runs analysis and the test suite automatically on every pull reque
 | Data models | `lib/models/` — plain Dart classes with `toJson`/`fromJson` or `toMap`/`fromMap` |
 | Utilities | `lib/core/utils/` — pure static helpers |
 | Constants | `lib/core/constants/` — ports, timeouts and app-wide values; no magic numbers elsewhere |
-| Errors | `lib/core/errors/` — throw typed exceptions from the `LocalDropException` hierarchy |
+| Errors | `lib/core/errors/` — throw typed exceptions from the `NajikifyException` hierarchy |
 
 Additional guidelines:
 
@@ -100,15 +100,15 @@ flutter test test/transfer_state_test.dart   # a single file
 Please include:
 
 - Platform and version (e.g. Ubuntu 25.10, Android 14)
-- LocalDrop version (from `pubspec.yaml` or the release you installed)
+- Najikify version (from `pubspec.yaml` or the release you installed)
 - Steps to reproduce
 - Expected vs actual behaviour
-- Relevant logs — run the app from a terminal (`localdrop`) to capture output
+- Relevant logs — run the app from a terminal (`najikify`) to capture output
 
 ## Security Issues
 
 Do **not** open a public issue for vulnerabilities. Use a
-[private security advisory](https://github.com/ankitkhatrik6/localdrop/security/advisories/new)
+[private security advisory](https://github.com/ankitkhatrik6/najikify/security/advisories/new)
 instead. See the **Security** section of the README for the project's threat model.
 
 ## License
