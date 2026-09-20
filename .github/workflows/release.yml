@@ -137,5 +137,25 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*
-          generate_release_notes: true
+          generate_release_notes: false
           draft: false
+          body: |
+            ## Najikify ${{ github.ref_name }}
+
+            Private peer-to-peer file transfer for your local network — no cloud, no accounts.
+
+            ### Downloads
+
+            | File | Platform |
+            |------|----------|
+            | `najikify-linux-*-amd64.deb` | Debian/Ubuntu (x86-64) — install with `sudo apt install ./najikify-linux-*.deb` |
+            | `najikify-linux-*-amd64.tar.gz` | Portable Linux bundle (no install) |
+            | `najikify-android-*.apk` | Android — sideload to install |
+
+            ### Setup
+
+            1. Install on both devices and open **Najikify** on each.
+            2. Both must be on the same Wi-Fi / LAN (allow `53317/tcp` + `53318/udp` through the firewall).
+            3. The other device appears under **Devices** within seconds — tap it, pick files, Accept on the receiver.
+
+            **Full Changelog**: https://github.com/ankitkhatrik6/najikify/commits/${{ github.ref_name }}
