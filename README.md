@@ -1,14 +1,14 @@
 <div align="center">
 
-# LocalDrop
+# Najikify
 
 **Private peer-to-peer file transfer for your local network.**
 
 Move files and folders directly between Linux desktops and Android devices — no cloud, no accounts, no third-party uploads. Your data never leaves your Wi-Fi.
 
-[![CI](https://github.com/ankitkhatrik6/localdrop/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitkhatrik6/localdrop/actions/workflows/ci.yml)
-[![Build & Release](https://github.com/ankitkhatrik6/localdrop/actions/workflows/release.yml/badge.svg)](https://github.com/ankitkhatrik6/localdrop/actions/workflows/release.yml)
-[![Release](https://img.shields.io/github/v/release/ankitkhatrik6/localdrop?include_prereleases&sort=semver)](https://github.com/ankitkhatrik6/localdrop/releases/latest)
+[![CI](https://github.com/ankitkhatrik6/najikify/actions/workflows/ci.yml/badge.svg)](https://github.com/ankitkhatrik6/najikify/actions/workflows/ci.yml)
+[![Build & Release](https://github.com/ankitkhatrik6/najikify/actions/workflows/release.yml/badge.svg)](https://github.com/ankitkhatrik6/najikify/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/v/release/ankitkhatrik6/najikify?include_prereleases&sort=semver)](https://github.com/ankitkhatrik6/najikify/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Android-informational)](#supported-platforms)
@@ -21,7 +21,7 @@ Move files and folders directly between Linux desktops and Android devices — n
 
 ## Overview
 
-LocalDrop turns any two devices on the same Wi-Fi or LAN into a direct transfer channel. It discovers peers automatically, streams files over HTTP with checksum verification, and keeps a local history of everything sent and received.
+Najikify turns any two devices on the same Wi-Fi or LAN into a direct transfer channel. It discovers peers automatically, streams files over HTTP with checksum verification, and keeps a local history of everything sent and received.
 
 - **No cloud, no accounts.** Nothing is uploaded anywhere — transfers are strictly device-to-device.
 - **Automatic discovery.** Peers on the same subnet find each other over UDP multicast/broadcast; no IP addresses to type.
@@ -72,33 +72,33 @@ LocalDrop turns any two devices on the same Wi-Fi or LAN into a direct transfer 
 
 Prebuilt artifacts are published automatically by GitHub Actions.
 
-- **Latest release** → [releases/latest](https://github.com/ankitkhatrik6/localdrop/releases/latest)
-- **Artifacts from `main`** → [Actions → Build & Release](https://github.com/ankitkhatrik6/localdrop/actions/workflows/release.yml) → pick a run → **Artifacts**
+- **Latest release** → [releases/latest](https://github.com/ankitkhatrik6/najikify/releases/latest)
+- **Artifacts from `main`** → [Actions → Build & Release](https://github.com/ankitkhatrik6/najikify/actions/workflows/release.yml) → pick a run → **Artifacts**
 
 | File | Platform |
 |------|----------|
-| `localdrop-linux-<version>-amd64.deb` | Debian / Ubuntu (x86-64) |
-| `localdrop-linux-<version>-amd64.tar.gz` | Portable Linux bundle |
-| `localdrop-android-<version>.apk` | Universal Android APK |
+| `najikify-linux-<version>-amd64.deb` | Debian / Ubuntu (x86-64) |
+| `najikify-linux-<version>-amd64.tar.gz` | Portable Linux bundle |
+| `najikify-android-<version>.apk` | Universal Android APK |
 
 ## Installation
 
 ### Linux (Debian / Ubuntu)
 
-Download the `.deb` from [Releases](https://github.com/ankitkhatrik6/localdrop/releases/latest), then:
+Download the `.deb` from [Releases](https://github.com/ankitkhatrik6/najikify/releases/latest), then:
 
 ```bash
-sudo apt install ./localdrop-linux-1.0.0-amd64.deb
+sudo apt install ./najikify-linux-1.0.0-amd64.deb
 
 # Required so peers can discover and reach each other
 sudo ufw allow 53317/tcp
 sudo ufw allow 53318/udp
 ```
 
-Launch **LocalDrop** from your application menu (under *Network* / *File Transfer*), or:
+Launch **Najikify** from your application menu (under *Network* / *File Transfer*), or:
 
 ```bash
-localdrop
+najikify
 ```
 
 <details>
@@ -106,13 +106,13 @@ localdrop
 
 ```bash
 sudo bash packaging/linux/install_deps.sh   # clang, cmake, ninja, pkg-config, GTK3, SQLite dev
-bash packaging/linux/build_deb.sh           # -> build/localdrop-linux-<version>-<arch>.deb
+bash packaging/linux/build_deb.sh           # -> build/najikify-linux-<version>-<arch>.deb
 ```
 </details>
 
 ### Android
 
-1. Download `localdrop-android-<version>.apk` from [Releases](https://github.com/ankitkhatrik6/localdrop/releases/latest).
+1. Download `najikify-android-<version>.apk` from [Releases](https://github.com/ankitkhatrik6/najikify/releases/latest).
 2. Open it on the device and allow installation from unknown sources when prompted.
 3. Grant camera (QR pairing) and storage/media permissions on first launch.
 
@@ -123,8 +123,8 @@ bash packaging/linux/build_deb.sh           # -> build/localdrop-linux-<version>
 ```bash
 # 1. Connect both devices to the same Wi-Fi / LAN
 
-# 2. Start LocalDrop on both
-localdrop
+# 2. Start Najikify on both
+najikify
 
 # 3. The other device appears under "Devices" on the Home tab within seconds
 
@@ -188,7 +188,7 @@ No local Android SDK or desktop toolchain needed — the runners provide them.
 ## Project Structure
 
 ```
-localdrop/
+najikify/
 |-- lib/
 |   |-- app/                 # App shell, routing, theming
 |   |-- core/
@@ -241,7 +241,7 @@ localdrop/
 <details>
 <summary><strong>Transfer is rejected or times out</strong></summary>
 
-- Run the app from a terminal (`localdrop`) to watch live logs.
+- Run the app from a terminal (`najikify`) to watch live logs.
 - Verify the receiver is still running and the peer has not gone stale (12 s timeout).
 - Large transfers may need the machine to stay awake.
 </details>
@@ -279,9 +279,9 @@ Keep code consistent with the existing architecture (`lib/services` for logic, `
 
 ## Security
 
-LocalDrop is designed for **trusted local networks**. Discovery and transfers use plain HTTP on the LAN, protected by per-session tokens and checksum verification — this is not transport encryption. Do not use it over untrusted or public networks.
+Najikify is designed for **trusted local networks**. Discovery and transfers use plain HTTP on the LAN, protected by per-session tokens and checksum verification — this is not transport encryption. Do not use it over untrusted or public networks.
 
-To report a vulnerability, open a [private security advisory](https://github.com/ankitkhatrik6/localdrop/security/advisories/new) instead of a public issue.
+To report a vulnerability, open a [private security advisory](https://github.com/ankitkhatrik6/najikify/security/advisories/new) instead of a public issue.
 
 ## License
 
