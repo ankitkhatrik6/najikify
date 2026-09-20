@@ -60,7 +60,7 @@ class TransferService extends ChangeNotifier {
   List<Transfer> get failedTransfers =>
       _transfers.values.where((t) => t.state == TransferState.failed || t.state == TransferState.cancelled).toList();
 
-  /// Starts the embedded LocalDrop HTTP daemon on the configured port.
+  /// Starts the embedded Najikify HTTP daemon on the configured port.
   Future<void> startServer() async {
     if (_isServerRunning) return;
 
@@ -414,7 +414,7 @@ class TransferService extends ChangeNotifier {
     required List<FileEntityEntry> entries,
   }) async {
     if (entries.isEmpty) {
-      throw const LocalDropException('No files selected to send.');
+      throw const NajikifyException('No files selected to send.');
     }
 
     final transferId = const Uuid().v4();
@@ -608,7 +608,7 @@ class TransferService extends ChangeNotifier {
 
         final res = await req.close();
         if (res.statusCode != HttpStatus.ok) {
-          throw LocalDropException('Error uploading file ${entry.relativePath}: HTTP ${res.statusCode}');
+          throw NajikifyException('Error uploading file ${entry.relativePath}: HTTP ${res.statusCode}');
         }
       }
 

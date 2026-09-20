@@ -1,7 +1,7 @@
-/// Network and protocol constants for LocalDrop
+/// Network and protocol constants for Najikify
 class NetworkConstants {
   // Discovery service configuration
-  static const String mdnsServiceType = '_localdrop._tcp';
+  static const String mdnsServiceType = '_najikify._tcp';
   static const String mdnsDomain = 'local';
   static const int defaultHttpPort = 53317;
   static const int defaultDiscoveryPort = 53318;
@@ -20,13 +20,13 @@ class NetworkConstants {
   static const String endpointEventsWs = '/api/v1/events/ws';
 
   // Custom HTTP headers
-  static const String headerDeviceId = 'X-LocalDrop-Device-Id';
-  static const String headerDeviceName = 'X-LocalDrop-Device-Name';
-  static const String headerPlatform = 'X-LocalDrop-Platform';
-  static const String headerSessionToken = 'X-LocalDrop-Session-Token';
-  static const String headerTransferId = 'X-LocalDrop-Transfer-Id';
-  static const String headerFileId = 'X-LocalDrop-File-Id';
-  static const String headerFileSize = 'X-LocalDrop-File-Size';
-  static const String headerFileChecksum = 'X-LocalDrop-File-Checksum';
-  static const String headerRelativePath = 'X-LocalDrop-Relative-Path';
+  static const String headerDeviceId = 'X-Najikify-Device-Id';
+  static const String headerDeviceName = 'X-Najikify-Device-Name';
+  static const String headerPlatform = 'X-Najikify-Platform';
+  static const String headerSessionToken = 'X-Najikify-Session-Token';
+  static const String headerTransferId = 'X-Najikify-Transfer-Id';
+  static const String headerFileId = 'X-Najikify-File-Id';
+  static const String headerFileSize = 'X-Najikify-File-Size';
+  static const String headerFileChecksum = 'X-Najikify-File-Checksum';
+  static const String headerRelativePath = 'X-Najikify-Relative-Path';
 }

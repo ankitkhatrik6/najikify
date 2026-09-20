@@ -30,7 +30,7 @@ void main() async {
   final networkService = NetworkService();
   await networkService.initialize();
 
-  // 4. Start LocalDrop Streaming Server daemon
+  // 4. Start Najikify Streaming Server daemon
   final transferService = TransferService();
   await transferService.startServer();
 
@@ -38,5 +38,5 @@ void main() async {
   final discoveryService = DiscoveryService();
   await discoveryService.startDiscovery();
 
-  runApp(const LocalDropApp());
+  runApp(const NajikifyApp());
 }

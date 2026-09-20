@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:localdrop/models/device.dart';
+import 'package:najikify/models/device.dart';
 
 void main() {
   group('Device Model Tests', () {

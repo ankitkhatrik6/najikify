@@ -4,7 +4,7 @@ import 'app_exceptions.dart';
 class ErrorHandler {
   /// Converts arbitrary exceptions into user-friendly localized messages.
   static String getUserFriendlyMessage(dynamic error) {
-    if (error is LocalDropException) {
+    if (error is NajikifyException) {
       return error.message;
     }
 
@@ -22,7 +22,7 @@ class ErrorHandler {
 
     final errStr = error.toString().toLowerCase();
     if (errStr.contains('connection refused')) {
-      return 'Connection was refused by target device. Ensure LocalDrop is open on both devices.';
+      return 'Connection was refused by target device. Ensure Najikify is open on both devices.';
     }
     if (errStr.contains('network is unreachable')) {
       return 'Network is unreachable. Connect your device to a local Wi-Fi router.';

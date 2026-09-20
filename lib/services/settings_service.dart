@@ -45,7 +45,7 @@ class SettingsService extends ChangeNotifier {
       await _db.setSetting('device_id', storedId);
     }
     _deviceId = storedId;
-    _fingerprint = CryptoUtils.sha256Digest('localdrop-$_deviceId').substring(0, 32);
+    _fingerprint = CryptoUtils.sha256Digest('najikify-$_deviceId').substring(0, 32);
 
     // Determine default download path for Linux vs Android
     final defaultDownloadDir = await _getDefaultDownloadDirectory();

@@ -26,7 +26,7 @@ class PairingSession {
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 
-  /// Serializes into the localdrop://pair QR URI scheme.
+  /// Serializes into the najikify://pair QR URI scheme.
   String toQrUri() {
     final payload = {
       'sid': sessionId,
@@ -40,14 +40,14 @@ class PairingSession {
       'exp': expiresAt.millisecondsSinceEpoch,
     };
     final encoded = base64Url.encode(utf8.encode(jsonEncode(payload)));
-    return 'localdrop://pair/$encoded';
+    return 'najikify://pair/$encoded';
   }
 
-  /// Deserializes a localdrop://pair URI into a validated PairingSession.
+  /// Deserializes a najikify://pair URI into a validated PairingSession.
   static PairingSession? fromQrUri(String uriString) {
     try {
       final uri = Uri.parse(uriString.trim());
-      if (uri.scheme != 'localdrop' || !uri.host.contains('pair') && uri.path != '/pair' && !uri.toString().startsWith('localdrop://pair/')) {
+      if (uri.scheme != 'najikify' || !uri.host.contains('pair') && uri.path != '/pair' && !uri.toString().startsWith('najikify://pair/')) {
         return null;
       }
 
