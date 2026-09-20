@@ -1,4 +1,4 @@
-package com.localdrop.app
+package com.najikify.app
 
 import io.flutter.embedding.android.FlutterActivity
 
