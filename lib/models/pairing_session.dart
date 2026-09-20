@@ -46,10 +46,15 @@ class PairingSession {
   /// Deserializes a najikify://pair URI into a validated PairingSession.
   static PairingSession? fromQrUri(String uriString) {
     try {
-      final uri = Uri.parse(uriString.trim());
-      if (uri.scheme != 'najikify' || !uri.host.contains('pair') && uri.path != '/pair' && !uri.toString().startsWith('najikify://pair/')) {
+      final trimmed = uriString.trim();
+      if (trimmed.isEmpty) return null;
+      if (!trimmed.startsWith('najikify://pair/') &&
+          !trimmed.startsWith('najikify://pair?') &&
+          !trimmed.startsWith('najikify:pair/')) {
         return null;
       }
+      final uri = Uri.parse(trimmed);
+      if (uri.scheme != 'najikify') return null;
 
       String encodedData = '';
       if (uri.pathSegments.isNotEmpty) {

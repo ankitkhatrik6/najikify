@@ -97,16 +97,68 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onConnectDevicePressed(BuildContext context) {
-    if (Platform.isAndroid || Platform.isIOS) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const QrScannerScreen()),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (_) => const QrDisplayDialog(),
-      );
-    }
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Connect Device',
+              style: Theme.of(ctx)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Share your code or scan a peer code — works both ways.',
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.qr_code_rounded),
+              title: const Text('Show my QR code'),
+              subtitle: const Text('Let the other device scan this device'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                showDialog(
+                  context: context,
+                  builder: (_) => const QrDisplayDialog(),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code_scanner_rounded),
+              title: const Text('Scan peer QR code'),
+              subtitle: const Text('Camera, image file or pasted link'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
