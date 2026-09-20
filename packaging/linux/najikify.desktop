@@ -9,4 +9,6 @@ Type=Application
 Categories=Network;FileTransfer;Utility;
 Keywords=p2p;transfer;lan;wifi;share;najikify;
 StartupNotify=true
+StartupWMClass=com.najikify.app
 MimeType=x-scheme-handler/najikify;
+X-GNOME-UsesNotifications=false

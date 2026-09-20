@@ -4,8 +4,46 @@
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
+#include <gdk-pixbuf/gdk-pixbuf.h>
 
 #include "flutter/generated_plugin_registrant.h"
+
+// Tries installed theme paths + bundled flutter_assets so `flutter run`,
+// the portable tarball and the .deb all show the Najikify logo in the
+// window header, task switcher and dock (not a generic placeholder).
+static void najikify_set_window_icon(GtkWindow* window) {
+  gtk_window_set_icon_name(window, "najikify");
+  gtk_window_set_default_icon_name("najikify");
+
+  const char* candidates[] = {
+      "/usr/share/icons/hicolor/512x512/apps/najikify.png",
+      "/usr/share/icons/hicolor/256x256/apps/najikify.png",
+      "/usr/share/icons/hicolor/128x128/apps/najikify.png",
+      "/usr/share/icons/hicolor/48x48/apps/najikify.png",
+      "/usr/share/pixmaps/najikify.png",
+      // Installed bundle layout: /usr/lib/najikify/data/flutter_assets/...
+      "/usr/lib/najikify/data/flutter_assets/assets/icons/najikify.png",
+      // Portable bundle layout: <bundle>/data/flutter_assets/...
+      "data/flutter_assets/assets/icons/najikify.png",
+      // Dev `flutter run` layout: build/linux/.../bundle/data/...
+      "build/linux/x64/release/bundle/data/flutter_assets/assets/icons/najikify.png",
+      "build/linux/x64/debug/bundle/data/flutter_assets/assets/icons/najikify.png",
+      nullptr,
+  };
+  for (int i = 0; candidates[i] != nullptr; i++) {
+    GError* error = nullptr;
+    GdkPixbuf* pixbuf =
+        gdk_pixbuf_new_from_file(candidates[i], &error);
+    if (pixbuf != nullptr) {
+      GList* list = g_list_append(nullptr, pixbuf);
+      gtk_window_set_icon_list(window, list);
+      g_list_free(list);
+      g_object_unref(pixbuf);
+      return;
+    }
+    if (error != nullptr) g_error_free(error);
+  }
+}
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -24,6 +62,7 @@ static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+  najikify_set_window_icon(window);
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
