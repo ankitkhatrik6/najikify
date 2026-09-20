@@ -13,7 +13,7 @@ No cloud. No accounts. No third-party uploads. Your data never leaves your Wi-Fi
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-0969DA?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/ankitkhatrik6/najikify/actions/workflows/ci.yml)
 [![Build](https://img.shields.io/badge/Build-Release_Pipeline-0969DA?style=flat-square&logo=github&logoColor=white)](https://github.com/ankitkhatrik6/najikify/actions/workflows/release.yml)
-[![Release](https://img.shields.io/github/v/release/ankitkhatrik6/najikify?include_prereleases&sort=semver&style=flat-square&logo=github&logoColor=white&color=0969DA)](https://github.com/ankitkhatrik6/najikify/releases/latest)
+[![Release](https://img.shields.io/badge/Release-Latest-0969DA?style=flat-square&logo=github&logoColor=white)](https://github.com/ankitkhatrik6/najikify/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-3.47-0969DA?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.13-0969DA?style=flat-square&logo=dart&logoColor=white)](https://dart.dev)
 [![Debian](https://img.shields.io/badge/Package-.deb-0969DA?style=flat-square&logo=debian&logoColor=white)](https://github.com/ankitkhatrik6/najikify/releases/latest)
@@ -21,7 +21,6 @@ No cloud. No accounts. No third-party uploads. Your data never leaves your Wi-Fi
 [![Platforms](https://img.shields.io/badge/Platforms-Linux_|_Android-0969DA?style=flat-square&logo=linux&logoColor=white)](#supported-platforms)
 [![License](https://img.shields.io/badge/License-MIT-0969DA?style=flat-square&logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-0969DA?style=flat-square&logo=git&logoColor=white)](CONTRIBUTING.md)
-
 <br />
 
 [Download](#downloads) &nbsp;|&nbsp; [Quick Start](#quick-start) &nbsp;|&nbsp; [How It Works](#how-it-works) &nbsp;|&nbsp; [Development](#development) &nbsp;|&nbsp; [Troubleshooting](#troubleshooting)
