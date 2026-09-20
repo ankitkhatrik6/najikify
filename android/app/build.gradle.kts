@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.localdrop.app"
+    namespace = "com.najikify.app"
     // Pinned to 36: flutter_plugin_android_lifecycle (via file_picker)
     // requires compiling against Android API 36+.
     compileSdk = 36
@@ -17,7 +17,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.localdrop.app"
+        applicationId = "com.najikify.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
