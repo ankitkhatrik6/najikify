@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 #
-# LocalDrop — second-desktop setup script
+# Najikify — second-desktop setup script
 #
-# Installs the LocalDrop .deb on another Linux desktop, plus its runtime
+# Installs the Najikify .deb on another Linux desktop, plus its runtime
 # dependencies and the firewall rules needed for LAN discovery + transfer.
 #
 # Usage:
 #   1. Copy this script and the .deb to the other desktop, e.g.:
-#        scp build/localdrop-linux-1.0.0-amd64.deb packaging/linux/setup_client.sh user@otherpc:~/
+#        scp build/najikify-linux-1.0.0-amd64.deb packaging/linux/setup_client.sh user@otherpc:~/
 #      (or copy them via USB drive — both files must sit in the same folder)
 #
 #   2. On the other desktop run:
 #        sudo bash setup_client.sh
 #
 #   Optional: pass the .deb path explicitly
-#        sudo bash setup_client.sh /path/to/localdrop-linux-1.0.0-amd64.deb
+#        sudo bash setup_client.sh /path/to/najikify-linux-1.0.0-amd64.deb
 #
 set -euo pipefail
 
@@ -28,13 +28,13 @@ fi
 
 # --- Locate the .deb -------------------------------------------------------
 if [ -z "$DEB_PATH" ]; then
-    DEB_PATH="$(find "$SCRIPT_DIR" -maxdepth 1 -name 'localdrop*.deb' | head -n 1 || true)"
+    DEB_PATH="$(find "$SCRIPT_DIR" -maxdepth 1 -name 'najikify*.deb' | head -n 1 || true)"
 fi
 
 if [ -z "$DEB_PATH" ] || [ ! -f "$DEB_PATH" ]; then
-    echo "Could not find the LocalDrop .deb file." >&2
-    echo "Put localdrop-linux-*.deb next to this script, or pass its path:" >&2
-    echo "  sudo bash setup_client.sh /path/to/localdrop-linux-1.0.0-amd64.deb" >&2
+    echo "Could not find the Najikify .deb file." >&2
+    echo "Put najikify-linux-*.deb next to this script, or pass its path:" >&2
+    echo "  sudo bash setup_client.sh /path/to/najikify-linux-1.0.0-amd64.deb" >&2
     exit 1
 fi
 
@@ -48,10 +48,10 @@ apt install -y \
     libgtk-3-0t64 \
     libsqlite3-0 2>/dev/null || apt install -y libgtk-3-0 libsqlite3-0
 
-echo "=== [2/4] Installing LocalDrop ==="
+echo "=== [2/4] Installing Najikify ==="
 apt install -y "$DEB_PATH"
 
-echo "=== [3/4] Opening LocalDrop firewall ports (UFW) ==="
+echo "=== [3/4] Opening Najikify firewall ports (UFW) ==="
 if command -v ufw >/dev/null 2>&1; then
     ufw allow 53317/tcp || true   # HTTP file streaming
     ufw allow 53318/udp || true   # LAN peer discovery
@@ -60,25 +60,25 @@ else
 fi
 
 echo "=== [4/4] Verifying installation ==="
-if command -v localdrop >/dev/null 2>&1; then
-    echo "  binary:  $(command -v localdrop)"
-    missing="$(ldd /usr/lib/localdrop/localdrop 2>/dev/null | grep -c 'not found' || true)"
+if command -v najikify >/dev/null 2>&1; then
+    echo "  binary:  $(command -v najikify)"
+    missing="$(ldd /usr/lib/najikify/najikify 2>/dev/null | grep -c 'not found' || true)"
     if [ "$missing" = "0" ]; then
         echo "  libraries: OK (all resolved)"
     else
         echo "  libraries: $missing MISSING — install the missing packages and re-run"
     fi
 else
-    echo "  localdrop command not found — installation may have failed" >&2
+    echo "  najikify command not found — installation may have failed" >&2
     exit 1
 fi
 
 cat <<'EOF'
 
-=== LocalDrop is ready on this desktop ===
+=== Najikify is ready on this desktop ===
 
 Now do the same (or just install the .deb) on the first desktop, then:
-  1. Open LocalDrop on both desktops (app launcher -> LocalDrop, or run: localdrop)
+  1. Open Najikify on both desktops (app launcher -> Najikify, or run: najikify)
   2. Both must be on the same Wi-Fi / LAN
   3. Wait for the other machine to appear under "Devices"
   4. Click a device to connect, then use "Send Files" / "Send Folder"

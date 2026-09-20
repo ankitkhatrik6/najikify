@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# LocalDrop — Linux build dependency installer
+# Najikify — Linux build dependency installer
 #
 # Installs the native toolchain required to build the Linux desktop app and
-# the Debian package, then opens the LocalDrop network ports.
+# the Debian package, then opens the Najikify network ports.
 #
 # Usage:  sudo bash packaging/linux/install_deps.sh
 #
@@ -27,7 +27,7 @@ apt install -y \
     libsqlite3-dev \
     adb
 
-echo "=== [3/3] Opening LocalDrop firewall ports (UFW) ==="
+echo "=== [3/3] Opening Najikify firewall ports (UFW) ==="
 if command -v ufw >/dev/null 2>&1; then
     ufw allow 53317/tcp || true   # HTTP file streaming
     ufw allow 53318/udp || true   # LAN peer discovery
