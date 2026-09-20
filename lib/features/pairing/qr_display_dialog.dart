@@ -56,7 +56,7 @@ class _QrDisplayDialogState extends State<QrDisplayDialog> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              'Scan this QR code from LocalDrop on your Android device to connect directly.',
+              'Scan this QR code from Najikify on your Android device to connect directly.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),

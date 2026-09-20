@@ -14,14 +14,14 @@ import 'theme.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-class LocalDropApp extends StatefulWidget {
-  const LocalDropApp({super.key});
+class NajikifyApp extends StatefulWidget {
+  const NajikifyApp({super.key});
 
   @override
-  State<LocalDropApp> createState() => _LocalDropAppState();
+  State<NajikifyApp> createState() => _NajikifyAppState();
 }
 
-class _LocalDropAppState extends State<LocalDropApp> {
+class _NajikifyAppState extends State<NajikifyApp> {
   @override
   void initState() {
     super.initState();

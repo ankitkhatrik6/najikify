@@ -65,7 +65,7 @@ class AppSettings {
     }
 
     return AppSettings(
-      deviceName: map['device_name'] as String? ?? 'LocalDrop Device',
+      deviceName: map['device_name'] as String? ?? 'Najikify Device',
       themeMode: mode,
       downloadPath: (map['download_path'] as String?)?.isNotEmpty == true
           ? map['download_path'] as String

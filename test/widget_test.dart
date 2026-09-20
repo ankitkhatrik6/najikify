@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:localdrop/app/theme.dart';
-import 'package:localdrop/widgets/empty_state.dart';
+import 'package:najikify/app/theme.dart';
+import 'package:najikify/widgets/empty_state.dart';
 
 void main() {
   testWidgets('EmptyState renders icon, title and message',

@@ -22,7 +22,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (barcodes.isEmpty) return;
 
     final code = barcodes.first.rawValue;
-    if (code != null && code.startsWith('localdrop://pair/')) {
+    if (code != null && code.startsWith('najikify://pair/')) {
       _processPairing(code);
     }
   }
@@ -44,7 +44,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceFirst('LocalDropException: ', '');
+          _errorMessage = e.toString().replaceFirst('NajikifyException: ', '');
           _isProcessing = false;
         });
       }
@@ -130,7 +130,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                         controller: _manualInputController,
                         decoration: InputDecoration(
                           labelText: 'Pairing URI',
-                          hintText: 'localdrop://pair/...',
+                          hintText: 'najikify://pair/...',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.arrow_forward),

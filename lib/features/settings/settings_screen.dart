@@ -212,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           // Section: About
-          _buildSectionHeader(context, 'About LocalDrop'),
+          _buildSectionHeader(context, 'About Najikify'),
           const ListTile(
             title: Text('Version'),
             subtitle: Text('${AppConstants.appVersion} (Offline LAN Peer-to-Peer)'),

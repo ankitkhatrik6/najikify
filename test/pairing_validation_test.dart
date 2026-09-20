@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:localdrop/models/device.dart';
-import 'package:localdrop/models/pairing_session.dart';
+import 'package:najikify/models/device.dart';
+import 'package:najikify/models/pairing_session.dart';
 
 void main() {
   group('Pairing & QR Validation Tests', () {
@@ -18,7 +18,7 @@ void main() {
       );
 
       final uri = session.toQrUri();
-      expect(uri.startsWith('localdrop://pair/'), true);
+      expect(uri.startsWith('najikify://pair/'), true);
 
       final parsed = PairingSession.fromQrUri(uri);
       expect(parsed, isNotNull);
@@ -35,8 +35,8 @@ void main() {
 
     test('Malformed pairing URIs are rejected', () {
       expect(PairingSession.fromQrUri('https://example.com/pair'), isNull);
-      expect(PairingSession.fromQrUri('localdrop://pair/!!!not-base64!!!'), isNull);
-      expect(PairingSession.fromQrUri('localdrop://pair/'), isNull);
+      expect(PairingSession.fromQrUri('najikify://pair/!!!not-base64!!!'), isNull);
+      expect(PairingSession.fromQrUri('najikify://pair/'), isNull);
     });
 
     test('Expired pairing session rejects validation', () {

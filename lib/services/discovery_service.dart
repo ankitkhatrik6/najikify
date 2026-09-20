@@ -112,7 +112,7 @@ class DiscoveryService extends ChangeNotifier {
 
       if (messageType == 'LOCDROP_ANNOUNCE') {
         final peerPort = data['port'] as int? ?? NetworkConstants.defaultHttpPort;
-        final peerName = data['name'] as String? ?? 'LocalDrop Peer';
+        final peerName = data['name'] as String? ?? 'Najikify Peer';
         final peerPlatform = DevicePlatform.fromString(data['platform'] as String? ?? 'unknown');
         final peerFingerprint = data['fingerprint'] as String? ?? '';
 

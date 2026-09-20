@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'LocalDrop',
+                                'Najikify',
                                 style: theme.textTheme.headlineMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: -0.5,
@@ -345,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: EmptyState(
                     icon: Icons.wifi_tethering_rounded,
                     title: 'No devices found',
-                    message: 'Make sure LocalDrop is open on other devices connected to this Wi-Fi network.',
+                    message: 'Make sure Najikify is open on other devices connected to this Wi-Fi network.',
                     actionLabel: 'Scan with QR Code',
                     onAction: () => _onConnectDevicePressed(context),
                   ),

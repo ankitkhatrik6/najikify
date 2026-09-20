@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:localdrop/core/utils/file_utils.dart';
-import 'package:localdrop/models/transfer_file.dart';
-import 'package:localdrop/models/transfer_protocol.dart';
+import 'package:najikify/core/utils/file_utils.dart';
+import 'package:najikify/models/transfer_file.dart';
+import 'package:najikify/models/transfer_protocol.dart';
 
 void main() {
   group('File Metadata & Protocol Serialization Tests', () {

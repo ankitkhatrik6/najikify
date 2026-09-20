@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:localdrop/core/utils/format_utils.dart';
-import 'package:localdrop/models/device.dart';
-import 'package:localdrop/models/transfer.dart';
-import 'package:localdrop/models/transfer_file.dart';
+import 'package:najikify/core/utils/format_utils.dart';
+import 'package:najikify/models/device.dart';
+import 'package:najikify/models/transfer.dart';
+import 'package:najikify/models/transfer_file.dart';
 
 void main() {
   group('Transfer State & Progress Calculation Tests', () {
