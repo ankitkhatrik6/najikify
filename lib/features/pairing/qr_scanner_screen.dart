@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:zxing2/qrcode.dart';
+import '../../core/utils/qr_payload_utils.dart';
 import '../../services/pairing_service.dart';
 
 class QrScannerScreen extends StatefulWidget {
@@ -65,16 +66,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (_isProcessing) return;
     if (capture.barcodes.isEmpty) return;
     for (final b in capture.barcodes) {
-      final code = b.rawValue;
-      if (code == null || code.trim().isEmpty) continue;
-      if (code.trim().startsWith('najikify://')) {
-        _processPairing(code.trim());
+      final pairingUri = QrPayloadUtils.extractPairingUri(b.rawValue);
+      if (pairingUri != null) {
+        _processPairing(pairingUri);
         return;
       }
     }
     if (mounted && _errorMessage == null) {
+      final looksLikeLink = capture.barcodes
+          .any((b) => QrPayloadUtils.looksLikeNajikifyLink(b.rawValue));
       setState(() {
-        _errorMessage = 'That QR is not a Najikify code. Scan the code in Najikify > Connect Device > Show my QR.';
+        _errorMessage = looksLikeLink
+            ? 'That Najikify link is not a pairing code. Use Connect Device > Show my QR on the peer.'
+            : 'That QR is not a Najikify code. Scan the code in Najikify > Connect Device > Show my QR.';
       });
     }
   }
@@ -141,10 +145,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         try {
           final capture = await _scannerController!.analyzeImage(file.path);
           if (capture != null && capture.barcodes.isNotEmpty) {
-            final code = capture.barcodes.first.rawValue;
-            if (code != null && code.trim().isNotEmpty) {
+            final pairingUri = capture.barcodes
+                .map((b) => QrPayloadUtils.extractPairingUri(b.rawValue))
+                .firstWhere((uri) => uri != null, orElse: () => null);
+            if (pairingUri != null) {
               if (mounted) setState(() => _isDecodingImage = false);
-              await _processPairing(code.trim());
+              await _processPairing(pairingUri);
               return;
             }
           }
@@ -153,15 +159,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       final bytes = await File(file.path).readAsBytes();
       final decoded = await _decodeQrBytes(bytes);
       if (!mounted) return;
-      if (decoded == null || decoded.trim().isEmpty) {
+      final pairingUri = QrPayloadUtils.extractPairingUri(decoded);
+      if (pairingUri == null) {
         setState(() {
-          _errorMessage = 'No QR code found in that image. Try a clearer screenshot.';
+          _errorMessage = decoded == null || decoded.trim().isEmpty
+              ? 'No QR code found in that image. Try a clearer screenshot.'
+              : 'That image holds a QR code, but not a Najikify pairing code.';
           _isDecodingImage = false;
         });
         return;
       }
       setState(() => _isDecodingImage = false);
-      await _processPairing(decoded.trim());
+      await _processPairing(pairingUri);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -170,6 +179,25 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         });
       }
     }
+  }
+
+  /// Validates a typed or pasted pairing link before starting the handshake.
+  void _submitManualInput(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return;
+    if (_isProcessing) return;
+
+    final pairingUri = QrPayloadUtils.extractPairingUri(text);
+    if (pairingUri == null) {
+      setState(() {
+        _errorMessage = QrPayloadUtils.looksLikeNajikifyLink(text)
+            ? 'That Najikify link is not a pairing code. Use Connect Device > Show my QR on the peer.'
+            : 'That does not look like a Najikify pairing link. It should start with najikify://pair/.';
+      });
+      return;
+    }
+
+    _processPairing(pairingUri);
   }
 
   Future<void> _processPairing(String qrUri) async {
@@ -406,21 +434,15 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                                 border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10)),
                               ),
-                              onSubmitted: (text) {
-                                if (text.trim().isNotEmpty) {
-                                  _processPairing(text.trim());
-                                }
-                              },
+                              onSubmitted: _submitManualInput,
                             ),
                           ),
                           const SizedBox(width: 8),
                           IconButton.filled(
                             icon: const Icon(Icons.arrow_forward),
                             tooltip: 'Connect',
-                            onPressed: () {
-                              final text = _manualInputController.text.trim();
-                              if (text.isNotEmpty) _processPairing(text);
-                            },
+                            onPressed: () =>
+                                _submitManualInput(_manualInputController.text),
                           ),
                           IconButton(
                             icon: const Icon(Icons.content_paste_rounded),
@@ -428,10 +450,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                             onPressed: () async {
                               final data = await Clipboard.getData(
                                   Clipboard.kTextPlain);
-                              final text = data?.text?.trim() ?? '';
-                              if (text.isEmpty) return;
-                              _manualInputController.text = text;
-                              _processPairing(text);
+                              final text = data?.text ?? '';
+                              if (text.trim().isEmpty) return;
+                              _manualInputController.text = text.trim();
+                              _submitManualInput(text);
                             },
                           ),
                         ],
