@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:zxing2/qrcode.dart';
+import 'package:zxing2/qrcode.dart' as zxing;
 import '../../core/utils/qr_payload_utils.dart';
 import '../../services/pairing_service.dart';
 
@@ -42,8 +42,14 @@ class _QrScannerScreenState extends State<QrScannerScreen>
         // first frame is laid out. Auto-starting here races the permission
         // dialog and can leave the native side without an attached activity.
         autoStart: false,
+        // Pairing codes are always QR: decoding a single format is faster and
+        // more tolerant of blurry or small codes.
+        formats: const [BarcodeFormat.qrCode],
         detectionSpeed: DetectionSpeed.noDuplicates,
         facing: CameraFacing.back,
+        // 720p is plenty for a QR code and keeps the preview light (Android
+        // only; ignored on other platforms).
+        cameraResolution: const Size(1280, 720),
       );
       _bootstrapCamera();
     }
@@ -149,9 +155,9 @@ class _QrScannerScreenState extends State<QrScannerScreen>
       }
       try {
         final source =
-            RGBLuminanceSource(candidate.width, candidate.height, pixels);
-        final bitmap = BinaryBitmap(HybridBinarizer(source));
-        final result = QRCodeReader().decode(bitmap);
+            zxing.RGBLuminanceSource(candidate.width, candidate.height, pixels);
+        final bitmap = zxing.BinaryBitmap(zxing.HybridBinarizer(source));
+        final result = zxing.QRCodeReader().decode(bitmap);
         if (result.text.isNotEmpty) return result.text;
       } catch (_) {}
     }
