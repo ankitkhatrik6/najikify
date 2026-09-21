@@ -41,12 +41,22 @@ class DiscoveryService extends ChangeNotifier {
     sendProbe();
 
     // Broadcast self-presence announcements periodically (every 4 seconds)
+    // so peers keep seeing us even while a transfer is in progress.
     _announcementTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       announceSelf();
     });
 
-    // Check for peers that disappeared (timeout after 12 seconds)
-    _staleCheckTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    // Also re-probe the LAN shortly after discovery starts so peers that
+    // started first answer back even if the very first probe was lost.
+    Timer(const Duration(seconds: 2), () {
+      if (_isDiscovering) sendProbe();
+    });
+
+    // Check for peers that disappeared. The timeout is intentionally generous
+    // (30 s, ~7 missed announcements) so a device is never dropped right
+    // after a transfer completes or during a brief Wi-Fi hiccup. Peers that
+    // actively transfer are refreshed separately (see touchDevice).
+    _staleCheckTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _removeStaleDevices();
     });
   }
@@ -205,7 +215,13 @@ class DiscoveryService extends ChangeNotifier {
     final staleIds = <String>[];
 
     _discoveredDevices.forEach((id, device) {
-      if (now.difference(device.lastSeen) > const Duration(seconds: 12)) {
+      // A device stays listed for 30 s after its last sighting. While it is
+      // involved in an in-flight transfer it never goes stale (see
+      // TransferService.touchPeer below, which refreshes lastSeen whenever
+      // bytes flow in either direction).
+      final isInFlightTransfer = _inFlightPeerIds.contains(id);
+      if (!isInFlightTransfer &&
+          now.difference(device.lastSeen) > const Duration(seconds: 30)) {
         staleIds.add(id);
       }
     });
@@ -222,6 +238,47 @@ class DiscoveryService extends ChangeNotifier {
   void registerManualDevice(Device device) {
     _discoveredDevices[device.id] = device;
     _db.saveOrUpdateDevice(device);
+    notifyListeners();
+  }
+
+  /// Peers with an actively running transfer. While a transfer is in flight
+  /// the peer must stay visible in the device list even if its UDP
+  /// announcements are temporarily lost, so the stale-device sweeper skips
+  /// these ids. Call [touchPeer] on every chunk to keep lastSeen fresh.
+  final Set<String> _inFlightPeerIds = {};
+
+  /// Marks a transfer peer as actively communicating so it is never swept as
+  /// stale, and refreshes its lastSeen timestamp (without resetting the
+  /// stored device entry otherwise).
+  void touchPeer(String deviceId) {
+    _inFlightPeerIds.add(deviceId);
+    final existing = _discoveredDevices[deviceId];
+    if (existing != null) {
+      _discoveredDevices[deviceId] =
+          existing.copyWith(lastSeen: DateTime.now());
+    }
+  }
+
+  /// Releases a transfer peer from the in-flight set once its transfer
+  /// finishes (completed / failed / cancelled) and refreshes lastSeen so the
+  /// peer stays listed for a full freshness window afterwards.
+  void releasePeer(String deviceId) {
+    _inFlightPeerIds.remove(deviceId);
+    final existing = _discoveredDevices[deviceId];
+    if (existing != null) {
+      _discoveredDevices[deviceId] =
+          existing.copyWith(lastSeen: DateTime.now());
+    } else {
+      // Peer was never discovered via UDP (e.g. QR-only pairing): reload the
+      // persisted record so the device list is not empty after a transfer.
+      _db.getDeviceById(deviceId).then((stored) {
+        if (stored != null) {
+          _discoveredDevices[deviceId] =
+              stored.copyWith(lastSeen: DateTime.now());
+          notifyListeners();
+        }
+      });
+    }
     notifyListeners();
   }
 

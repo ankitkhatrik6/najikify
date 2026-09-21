@@ -122,6 +122,18 @@ class DatabaseService {
     );
   }
 
+  Future<Device?> getDeviceById(String deviceId) async {
+    final db = await database;
+    final results = await db.query(
+      'devices',
+      where: 'id = ?',
+      whereArgs: [deviceId],
+      limit: 1,
+    );
+    if (results.isEmpty) return null;
+    return Device.fromMap(results.first);
+  }
+
   Future<List<Device>> getTrustedDevices() async {
     final db = await database;
     final results = await db.query(
