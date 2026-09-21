@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -7,7 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:zxing2/qrcode.dart';
+import 'package:zxing2/qrcode.dart' as zxing;
+import '../../core/utils/qr_payload_utils.dart';
 import '../../services/pairing_service.dart';
 
 class QrScannerScreen extends StatefulWidget {
@@ -17,7 +19,8 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen> {
+class _QrScannerScreenState extends State<QrScannerScreen>
+    with WidgetsBindingObserver {
   final PairingService _pairingService = PairingService();
   final TextEditingController _manualInputController = TextEditingController();
   MobileScannerController? _scannerController;
@@ -32,49 +35,90 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (_isMobile) {
       _scannerController = MobileScannerController(
+        // Start the camera explicitly once the permission is granted and the
+        // first frame is laid out. Auto-starting here races the permission
+        // dialog and can leave the native side without an attached activity.
+        autoStart: false,
+        // Pairing codes are always QR: decoding a single format is faster and
+        // more tolerant of blurry or small codes.
+        formats: const [BarcodeFormat.qrCode],
         detectionSpeed: DetectionSpeed.noDuplicates,
         facing: CameraFacing.back,
+        // 720p is plenty for a QR code and keeps the preview light (Android
+        // only; ignored on other platforms).
+        cameraResolution: const Size(1280, 720),
       );
-      _requestCameraPermission();
+      _bootstrapCamera();
     }
   }
 
-  Future<void> _requestCameraPermission() async {
+  /// Requests the camera permission and only then starts the preview.
+  Future<void> _bootstrapCamera() async {
+    final granted = await _requestCameraPermission();
+    if (!granted || !mounted) return;
+    // Wait for the first frame so the plugin has an attached activity.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startCamera());
+  }
+
+  /// Starts the camera preview, surfacing any native failure in the UI.
+  Future<void> _startCamera() async {
+    final controller = _scannerController;
+    if (controller == null || !mounted) return;
+    try {
+      await controller.start();
+    } catch (e) {
+      _onScannerError(e);
+    }
+  }
+
+  /// Requests camera permission; returns true when the scanner may start.
+  Future<bool> _requestCameraPermission() async {
     try {
       final status = await Permission.camera.request();
-      if (!mounted) return;
+      if (!mounted) return false;
       if (status.isPermanentlyDenied || status.isRestricted) {
         setState(() {
           _permissionMessage =
               'Camera access is blocked. Open app settings and allow Camera, then reopen the scanner.';
         });
-      } else if (!status.isGranted && !status.isLimited) {
+        return false;
+      }
+      if (!status.isGranted && !status.isLimited) {
         setState(() {
           _permissionMessage =
               'Camera permission is required. Tap retry after granting access.';
         });
-      } else {
-        setState(() => _permissionMessage = null);
+        return false;
       }
-    } catch (_) {}
+      setState(() => _permissionMessage = null);
+      return true;
+    } catch (_) {
+      // permission_handler can be unavailable on some builds; let the plugin
+      // request the permission natively during start() instead.
+      return true;
+    }
   }
 
   void _onDetect(BarcodeCapture capture) {
     if (_isProcessing) return;
     if (capture.barcodes.isEmpty) return;
     for (final b in capture.barcodes) {
-      final code = b.rawValue;
-      if (code == null || code.trim().isEmpty) continue;
-      if (code.trim().startsWith('najikify://')) {
-        _processPairing(code.trim());
+      final pairingUri = QrPayloadUtils.extractPairingUri(b.rawValue);
+      if (pairingUri != null) {
+        _processPairing(pairingUri);
         return;
       }
     }
     if (mounted && _errorMessage == null) {
+      final looksLikeLink = capture.barcodes
+          .any((b) => QrPayloadUtils.looksLikeNajikifyLink(b.rawValue));
       setState(() {
-        _errorMessage = 'That QR is not a Najikify code. Scan the code in Najikify > Connect Device > Show my QR.';
+        _errorMessage = looksLikeLink
+            ? 'That Najikify link is not a pairing code. Use Connect Device > Show my QR on the peer.'
+            : 'That QR is not a Najikify code. Scan the code in Najikify > Connect Device > Show my QR.';
       });
     }
   }
@@ -111,9 +155,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       }
       try {
         final source =
-            RGBLuminanceSource(candidate.width, candidate.height, pixels);
-        final bitmap = BinaryBitmap(HybridBinarizer(source));
-        final result = QRCodeReader().decode(bitmap);
+            zxing.RGBLuminanceSource(candidate.width, candidate.height, pixels);
+        final bitmap = zxing.BinaryBitmap(zxing.HybridBinarizer(source));
+        final result = zxing.QRCodeReader().decode(bitmap);
         if (result.text.isNotEmpty) return result.text;
       } catch (_) {}
     }
@@ -141,10 +185,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         try {
           final capture = await _scannerController!.analyzeImage(file.path);
           if (capture != null && capture.barcodes.isNotEmpty) {
-            final code = capture.barcodes.first.rawValue;
-            if (code != null && code.trim().isNotEmpty) {
+            final pairingUri = capture.barcodes
+                .map((b) => QrPayloadUtils.extractPairingUri(b.rawValue))
+                .firstWhere((uri) => uri != null, orElse: () => null);
+            if (pairingUri != null) {
               if (mounted) setState(() => _isDecodingImage = false);
-              await _processPairing(code.trim());
+              await _processPairing(pairingUri);
               return;
             }
           }
@@ -153,15 +199,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       final bytes = await File(file.path).readAsBytes();
       final decoded = await _decodeQrBytes(bytes);
       if (!mounted) return;
-      if (decoded == null || decoded.trim().isEmpty) {
+      final pairingUri = QrPayloadUtils.extractPairingUri(decoded);
+      if (pairingUri == null) {
         setState(() {
-          _errorMessage = 'No QR code found in that image. Try a clearer screenshot.';
+          _errorMessage = decoded == null || decoded.trim().isEmpty
+              ? 'No QR code found in that image. Try a clearer screenshot.'
+              : 'That image holds a QR code, but not a Najikify pairing code.';
           _isDecodingImage = false;
         });
         return;
       }
       setState(() => _isDecodingImage = false);
-      await _processPairing(decoded.trim());
+      await _processPairing(pairingUri);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -170,6 +219,25 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         });
       }
     }
+  }
+
+  /// Validates a typed or pasted pairing link before starting the handshake.
+  void _submitManualInput(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return;
+    if (_isProcessing) return;
+
+    final pairingUri = QrPayloadUtils.extractPairingUri(text);
+    if (pairingUri == null) {
+      setState(() {
+        _errorMessage = QrPayloadUtils.looksLikeNajikifyLink(text)
+            ? 'That Najikify link is not a pairing code. Use Connect Device > Show my QR on the peer.'
+            : 'That does not look like a Najikify pairing link. It should start with najikify://pair/.';
+      });
+      return;
+    }
+
+    _processPairing(pairingUri);
   }
 
   Future<void> _processPairing(String qrUri) async {
@@ -198,9 +266,31 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _manualInputController.dispose();
     _scannerController?.dispose();
     super.dispose();
+  }
+
+  /// Releases the camera while the app is in the background and re-acquires it
+  /// when it comes back, so the preview never stays in a broken state
+  /// ("camera failed to start" after task switching).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isMobile) return;
+    final controller = _scannerController;
+    if (controller == null) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (_isProcessing || _permissionMessage != null) return;
+        unawaited(_startCamera());
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        unawaited(controller.stop());
+    }
   }
 
   Future<void> _toggleTorch() async {
@@ -214,11 +304,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   Future<void> _retryCamera() async {
     setState(() => _permissionMessage = null);
-    await _requestCameraPermission();
-    try {
-      await _scannerController?.start();
-    } catch (e) {
-      _onScannerError(e);
+    final granted = await _requestCameraPermission();
+    if (granted && mounted) {
+      await _startCamera();
     }
   }
 
@@ -406,21 +494,15 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                                 border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10)),
                               ),
-                              onSubmitted: (text) {
-                                if (text.trim().isNotEmpty) {
-                                  _processPairing(text.trim());
-                                }
-                              },
+                              onSubmitted: _submitManualInput,
                             ),
                           ),
                           const SizedBox(width: 8),
                           IconButton.filled(
                             icon: const Icon(Icons.arrow_forward),
                             tooltip: 'Connect',
-                            onPressed: () {
-                              final text = _manualInputController.text.trim();
-                              if (text.isNotEmpty) _processPairing(text);
-                            },
+                            onPressed: () =>
+                                _submitManualInput(_manualInputController.text),
                           ),
                           IconButton(
                             icon: const Icon(Icons.content_paste_rounded),
@@ -428,10 +510,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                             onPressed: () async {
                               final data = await Clipboard.getData(
                                   Clipboard.kTextPlain);
-                              final text = data?.text?.trim() ?? '';
-                              if (text.isEmpty) return;
-                              _manualInputController.text = text;
-                              _processPairing(text);
+                              final text = data?.text ?? '';
+                              if (text.trim().isEmpty) return;
+                              _manualInputController.text = text.trim();
+                              _submitManualInput(text);
                             },
                           ),
                         ],
