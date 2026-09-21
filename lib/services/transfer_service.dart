@@ -16,6 +16,7 @@ import '../models/transfer.dart';
 import '../models/transfer_file.dart';
 import '../models/transfer_protocol.dart';
 import 'database_service.dart';
+import 'discovery_service.dart';
 import 'file_service.dart';
 import 'history_service.dart';
 import 'pairing_service.dart';
@@ -38,6 +39,7 @@ class TransferService extends ChangeNotifier {
   final DatabaseService _db = DatabaseService();
   final HistoryService _historyService = HistoryService();
   final PairingService _pairingService = PairingService();
+  final DiscoveryService _discoveryService = DiscoveryService();
 
   HttpServer? _server;
   bool _isServerRunning = false;
@@ -80,6 +82,47 @@ class TransferService extends ChangeNotifier {
       _isServerRunning = false;
       notifyListeners();
     }
+  }
+
+  void _touchPeer(Device peer) => _discoveryService.touchPeer(peer.id);
+
+  void _releasePeer(Device peer) => _discoveryService.releasePeer(peer.id);
+
+  /// Refreshes a transfer snapshot with the aggregated per-file progress and
+  /// live speed/ETA. Extracted so both the receive path (HTTP chunk handler)
+  /// and the send path (multipart upload loop) compute progress identically.
+  void _refreshLiveProgress({
+    required String transferId,
+    required List<TransferFile> files,
+    required int transferredBytes,
+    required int lastSampleBytes,
+    required DateTime lastSampleTime,
+    required double lastSpeed,
+    required int lastEta,
+  }) {
+    final transfer = _transfers[transferId];
+    if (transfer == null) return;
+    final now = DateTime.now();
+    final elapsed = now.difference(lastSampleTime).inMilliseconds;
+
+    double speed = lastSpeed;
+    int eta = lastEta;
+    if (elapsed >= 500) {
+      final delta = transferredBytes - lastSampleBytes;
+      speed = (delta / (elapsed / 1000.0)).clamp(0.0, 500 * 1024 * 1024);
+      if (speed > 0) {
+        final remaining = transfer.totalBytes - transferredBytes;
+        eta = (remaining / speed).round();
+      }
+    }
+
+    _transfers[transferId] = transfer.copyWith(
+      transferredBytes: transferredBytes,
+      speed: speed,
+      etaSeconds: eta,
+      files: files,
+    );
+    notifyListeners();
   }
 
   Future<void> _handleIncomingRequest(HttpRequest request) async {
@@ -235,7 +278,10 @@ class TransferService extends ChangeNotifier {
       return;
     }
 
-    // Register active incoming transfer
+    // Register active incoming transfer. Pin the sender so it stays visible
+    // in the device list for the whole receive and afterwards
+    // (released in _registerReceiveChunk).
+    _touchPeer(peerDevice);
     final newTransfer = Transfer(
       id: transferReq.transferId,
       peerDevice: peerDevice,
@@ -338,13 +384,24 @@ class TransferService extends ChangeNotifier {
           return f;
         }).toList();
 
+        // Aggregate ALL per-file progress (not just this chunk's file) so the
+        // overall bar tracks every package in a multi-file transfer.
+        final aggregatedBytes =
+            updatedFiles.fold<int>(0, (sum, f) => sum + f.bytesTransferred);
+        final allFilesDone = updatedFiles.every(
+            (f) => f.status == TransferFileStatus.completed);
+        final finishedBytes =
+            allFilesDone ? transfer.totalBytes : aggregatedBytes;
+
         _transfers[transferId] = transfer.copyWith(
-          transferredBytes: newTotalTransferred,
-          speed: speed,
-          etaSeconds: eta,
+          transferredBytes: finishedBytes,
+          speed: allFilesDone ? 0 : speed,
+          etaSeconds: allFilesDone ? 0 : eta,
           files: updatedFiles,
         );
 
+        // Keep the sender pinned in discovery while bytes are flowing.
+        _touchPeer(transfer.peerDevice);
         notifyListeners();
       }
 
@@ -365,13 +422,24 @@ class TransferService extends ChangeNotifier {
       final allDone = updatedTransfer.files.every((f) => f.isCompleted);
 
       if (allDone) {
+        // Finalize with full byte counts so a completed transfer never shows
+        // 0% in Transfers or History.
+        final finishedFiles = updatedTransfer.files
+            .map((f) => f.copyWith(
+                  bytesTransferred: f.size,
+                  status: TransferFileStatus.completed,
+                ))
+            .toList();
         final completed = updatedTransfer.copyWith(
           state: TransferState.completed,
+          transferredBytes: updatedTransfer.totalBytes,
           completedAt: DateTime.now(),
           speed: 0,
           etaSeconds: 0,
+          files: finishedFiles,
         );
         _transfers[transferId] = completed;
+        _releasePeer(updatedTransfer.peerDevice);
         await _historyService.addTransfer(completed);
         notifyListeners();
       }
@@ -459,6 +527,9 @@ class TransferService extends ChangeNotifier {
   Future<void> _runSendWorker(Transfer initialTransfer, List<FileEntityEntry> entries) async {
     final transferId = initialTransfer.id;
     final peer = initialTransfer.peerDevice;
+
+    // Pin the receiver in discovery for the whole upload and afterwards.
+    _touchPeer(peer);
 
     try {
       // 1. Handshake with remote peer
@@ -597,13 +668,21 @@ class TransferService extends ChangeNotifier {
             return f;
           }).toList();
 
-          _transfers[transferId] = _transfers[transferId]!.copyWith(
-            transferredBytes: transferredSoFar,
-            speed: speed,
-            etaSeconds: eta,
+          // Aggregate across ALL files so multi-package sends track live
+          // instead of resetting per file. Keep the receiver pinned while
+          // bytes are flowing.
+          final aggregatedBytes =
+              updatedFiles.fold<int>(0, (sum, f) => sum + f.bytesTransferred);
+          _touchPeer(peer);
+          _refreshLiveProgress(
+            transferId: transferId,
             files: updatedFiles,
+            transferredBytes: aggregatedBytes,
+            lastSampleBytes: lastSampleBytes,
+            lastSampleTime: lastSampleTime,
+            lastSpeed: speed,
+            lastEta: eta,
           );
-          notifyListeners();
         }
 
         final res = await req.close();
@@ -614,14 +693,25 @@ class TransferService extends ChangeNotifier {
 
       httpClient.close();
 
-      // Mark transfer completed
+      // Mark transfer completed with full byte counts so history never
+      // shows 0% for a finished transfer.
+      final finishedSendFiles = _transfers[transferId]!
+          .files
+          .map((f) => f.copyWith(
+                bytesTransferred: f.size,
+                status: TransferFileStatus.completed,
+              ))
+          .toList();
       final completed = _transfers[transferId]!.copyWith(
         state: TransferState.completed,
+        transferredBytes: _transfers[transferId]!.totalBytes,
         completedAt: DateTime.now(),
         speed: 0,
         etaSeconds: 0,
+        files: finishedSendFiles,
       );
       _transfers[transferId] = completed;
+      _releasePeer(peer);
       await _historyService.addTransfer(completed);
       notifyListeners();
     } catch (e) {
@@ -634,6 +724,7 @@ class TransferService extends ChangeNotifier {
           etaSeconds: 0,
         );
         _transfers[transferId] = failed;
+        _releasePeer(peer);
         await _historyService.addTransfer(failed);
         notifyListeners();
       }
@@ -649,6 +740,8 @@ class TransferService extends ChangeNotifier {
       speed: 0,
       etaSeconds: 0,
     );
+
+    _releasePeer(transfer.peerDevice);
 
     // Close any active write sink
     if (_activeFileSinks.containsKey(transferId)) {
