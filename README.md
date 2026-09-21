@@ -317,6 +317,29 @@ flutter doctor     # "Linux toolchain" should be green
 </details>
 
 <details>
+<summary><b>Android camera / QR scanner fails to start</b></summary>
+
+<br />
+
+If the scanner shows *"Camera failed to start: code genericError, message:
+Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()'
+on a null object reference"*, that came from R8 full mode (the Android release
+default) removing ML Kit classes that ML Kit itself loads through reflection.
+Debug builds were never affected. **Fixed in v1.0.2**, which ships the required
+keep rules (`android/app/proguard-rules.pro`).
+
+If it still happens on your device:
+
+- Open **Settings → Apps → Najikify → Permissions** and allow **Camera**, then
+  reopen the scanner.
+- Make sure no other app is holding the camera (video call apps keep it locked).
+- Use **Scan from gallery image**: screenshot the peer QR and pick it with the
+  gallery button, no camera needed.
+- Or use **Copy Link** on the peer device and paste the link into the scanner.
+
+</details>
+
+<details>
 <summary><b>Android build: SDK or JDK errors</b></summary>
 
 <br />
