@@ -32,8 +32,18 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Release builds run R8 in full mode (AGP 9 default). R8 strips the
+            // ML Kit classes that BarcodeScanning.getClient() reaches through
+            // reflection, which aborts the camera with
+            // "Attempt to invoke virtual method 'java.lang.Class
+            // java.lang.Object.getClass()' on a null object reference".
+            // proguard-rules.pro keeps those classes so the Android QR scanner
+            // works in release builds too.
+            isMinifyEnabled = true
+            // Keep resource shrinking off: Flutter assets/resources are looked
+            // up dynamically and are not worth the risk for a sideloaded APK.
+            isShrinkResources = false
+            proguardFiles("proguard-rules.pro")
             signingConfig = signingConfigs.getByName("debug")
         }
     }
