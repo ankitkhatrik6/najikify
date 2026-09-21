@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -18,7 +19,8 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen> {
+class _QrScannerScreenState extends State<QrScannerScreen>
+    with WidgetsBindingObserver {
   final PairingService _pairingService = PairingService();
   final TextEditingController _manualInputController = TextEditingController();
   MobileScannerController? _scannerController;
@@ -33,6 +35,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (_isMobile) {
       _scannerController = MobileScannerController(
         // Start the camera explicitly once the permission is granted and the
@@ -257,9 +260,31 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _manualInputController.dispose();
     _scannerController?.dispose();
     super.dispose();
+  }
+
+  /// Releases the camera while the app is in the background and re-acquires it
+  /// when it comes back, so the preview never stays in a broken state
+  /// ("camera failed to start" after task switching).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isMobile) return;
+    final controller = _scannerController;
+    if (controller == null) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (_isProcessing || _permissionMessage != null) return;
+        unawaited(_startCamera());
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        unawaited(controller.stop());
+    }
   }
 
   Future<void> _toggleTorch() async {
