@@ -55,6 +55,19 @@ kotlin {
     }
 }
 
+dependencies {
+    // Bundled ML Kit barcode scanning used by mobile_scanner. Declaring it here
+    // (alongside the keep rules in proguard-rules.pro) pins the version that
+    // ships in the APK and marks it as a direct dependency of the app module,
+    // which keeps R8 from treating the reflection-accessed ML Kit classes as
+    // unused code in release builds.
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+
+    // CameraX versions used by mobile_scanner 5.x.
+    implementation("androidx.camera:camera-lifecycle:1.3.3")
+    implementation("androidx.camera:camera-camera2:1.3.3")
+}
+
 flutter {
     source = "../.."
 }
