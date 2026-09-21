@@ -35,31 +35,62 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     super.initState();
     if (_isMobile) {
       _scannerController = MobileScannerController(
+        // Start the camera explicitly once the permission is granted and the
+        // first frame is laid out. Auto-starting here races the permission
+        // dialog and can leave the native side without an attached activity.
+        autoStart: false,
         detectionSpeed: DetectionSpeed.noDuplicates,
         facing: CameraFacing.back,
       );
-      _requestCameraPermission();
+      _bootstrapCamera();
     }
   }
 
-  Future<void> _requestCameraPermission() async {
+  /// Requests the camera permission and only then starts the preview.
+  Future<void> _bootstrapCamera() async {
+    final granted = await _requestCameraPermission();
+    if (!granted || !mounted) return;
+    // Wait for the first frame so the plugin has an attached activity.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startCamera());
+  }
+
+  /// Starts the camera preview, surfacing any native failure in the UI.
+  Future<void> _startCamera() async {
+    final controller = _scannerController;
+    if (controller == null || !mounted) return;
+    try {
+      await controller.start();
+    } catch (e) {
+      _onScannerError(e);
+    }
+  }
+
+  /// Requests camera permission; returns true when the scanner may start.
+  Future<bool> _requestCameraPermission() async {
     try {
       final status = await Permission.camera.request();
-      if (!mounted) return;
+      if (!mounted) return false;
       if (status.isPermanentlyDenied || status.isRestricted) {
         setState(() {
           _permissionMessage =
               'Camera access is blocked. Open app settings and allow Camera, then reopen the scanner.';
         });
-      } else if (!status.isGranted && !status.isLimited) {
+        return false;
+      }
+      if (!status.isGranted && !status.isLimited) {
         setState(() {
           _permissionMessage =
               'Camera permission is required. Tap retry after granting access.';
         });
-      } else {
-        setState(() => _permissionMessage = null);
+        return false;
       }
-    } catch (_) {}
+      setState(() => _permissionMessage = null);
+      return true;
+    } catch (_) {
+      // permission_handler can be unavailable on some builds; let the plugin
+      // request the permission natively during start() instead.
+      return true;
+    }
   }
 
   void _onDetect(BarcodeCapture capture) {
@@ -242,11 +273,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   Future<void> _retryCamera() async {
     setState(() => _permissionMessage = null);
-    await _requestCameraPermission();
-    try {
-      await _scannerController?.start();
-    } catch (e) {
-      _onScannerError(e);
+    final granted = await _requestCameraPermission();
+    if (granted && mounted) {
+      await _startCamera();
     }
   }
 
