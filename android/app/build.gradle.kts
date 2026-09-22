@@ -1,8 +1,48 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// ---------------------------------------------------------------- Signing ---
+//
+// A release APK must be signed with a dedicated, stable key — NOT the Android
+// debug key. A debug-signed "release" APK is flagged by Google Play Protect as
+//
+//   "Play Protect hasn't seen an app from this developer before. It may be
+//    unsafe." / "App blocked to protect your device."
+//
+// (Play Protect "Uncommon" category, see
+// https://developers.google.com/android/play-protect/warning-strings)
+// because `androiddebugkey` is a globally known, untrusted identity.
+//
+// Credentials are resolved from, in order:
+//   1. android/key.properties          — local builds (git-ignored)
+//   2. RELEASE_KEYSTORE_* env vars     — CI (GitHub Actions secrets)
+//
+// If neither is available the build falls back to the debug key so that a
+// fresh clone can still run `flutter build apk`.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+}
+
+fun signingValue(propertyKey: String, envKey: String): String? =
+    (keystoreProperties.getProperty(propertyKey) ?: System.getenv(envKey))
+        ?.takeIf { it.isNotBlank() }
+
+val releaseStorePath = signingValue("storeFile", "RELEASE_KEYSTORE_FILE")
+val releaseStoreFile = releaseStorePath?.let { file(it) }
+val releaseStorePassword = signingValue("storePassword", "RELEASE_STORE_PASSWORD")
+val releaseKeyAliasValue = signingValue("keyAlias", "RELEASE_KEY_ALIAS")
+val releaseKeyPasswordValue = signingValue("keyPassword", "RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = releaseStoreFile != null &&
+    releaseStorePassword != null &&
+    releaseKeyAliasValue != null &&
+    releaseKeyPasswordValue != null
 
 android {
     namespace = "com.najikify.app"
@@ -30,6 +70,23 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAliasValue
+                keyPassword = releaseKeyPasswordValue
+                // v1 (JAR) covers API <= 23, v2 covers API >= 24, v3 enables
+                // signing-key rotation. All three are requested so the APK
+                // verifies on every Android version we support.
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             // Release builds run R8 in full mode (AGP 9 default). R8 strips the
@@ -44,10 +101,21 @@ android {
             // up dynamically and are not worth the risk for a sideloaded APK.
             isShrinkResources = false
             proguardFiles("proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "Najikify: no release signing config found (android/key.properties " +
+                        "or RELEASE_KEYSTORE_* env vars). Falling back to the debug key — " +
+                        "this APK will be reported by Google Play Protect as an app " +
+                        "'from a developer it hasn't seen before'."
+                )
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
+
 
 kotlin {
     compilerOptions {
