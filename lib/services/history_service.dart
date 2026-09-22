@@ -38,6 +38,25 @@ class HistoryService extends ChangeNotifier {
     await loadHistory();
   }
 
+  /// Refreshes one persisted record in place (used while a multi-file
+  /// transfer is running so History shows realtime aggregate progress
+  /// instead of a stale 0% snapshot).
+  Future<void> refreshTransfer(Transfer transfer) async {
+    await _db.updateTransferProgress(
+      transfer.id,
+      transfer.state,
+      transferredBytes: transfer.transferredBytes,
+      files: transfer.files,
+    );
+    final index = _transfers.indexWhere((t) => t.id == transfer.id);
+    if (index >= 0) {
+      _transfers[index] = transfer;
+    } else {
+      _transfers.insert(0, transfer);
+    }
+    notifyListeners();
+  }
+
   Future<void> clearAll() async {
     await _db.clearHistory();
     _transfers = [];

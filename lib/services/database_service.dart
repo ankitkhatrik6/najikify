@@ -164,6 +164,52 @@ class DatabaseService {
     });
   }
 
+  /// Lightweight realtime progress update used while a transfer is running.
+  ///
+  /// Updates the aggregate `transferred_bytes` / `state` on the transfer row
+  /// and the per-file byte counters, without rewriting the whole record. This
+  /// keeps Transfers and History in sync with live progress (so a running or
+  /// finished multi-package transfer never shows a stale 0%).
+  Future<void> updateTransferProgress(
+    String transferId,
+    TransferState state, {
+    int? transferredBytes,
+    List<TransferFile>? files,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final values = <String, dynamic>{'state': state.name};
+      if (transferredBytes != null) {
+        values['transferred_bytes'] = transferredBytes;
+      }
+      if (state == TransferState.completed) {
+        values['completed_at'] = DateTime.now().millisecondsSinceEpoch;
+      }
+
+      await txn.update(
+        'transfers',
+        values,
+        where: 'id = ?',
+        whereArgs: [transferId],
+      );
+
+      if (files != null) {
+        for (final file in files) {
+          await txn.update(
+            'transfer_files',
+            {
+              'bytes_transferred': file.bytesTransferred,
+              'status': file.status.name,
+              if (file.localPath != null) 'local_path': file.localPath,
+            },
+            where: 'id = ?',
+            whereArgs: [file.id],
+          );
+        }
+      }
+    });
+  }
+
   Future<void> updateTransferStatus(String transferId, TransferState state,
       {int? transferredBytes, DateTime? completedAt, String? errorMessage}) async {
     final db = await database;

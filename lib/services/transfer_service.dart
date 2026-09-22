@@ -88,6 +88,22 @@ class TransferService extends ChangeNotifier {
 
   void _releasePeer(Device peer) => _discoveryService.releasePeer(peer.id);
 
+  /// Timestamp of the last History mirror per transfer id, used to throttle
+  /// database writes during a fast upload/download.
+  final Map<String, DateTime> _lastHistoryMirror = {};
+
+  /// Mirrors live progress into History at most every 700 ms. Without the
+  /// throttle a 64 KB chunk loop would issue thousands of SQLite updates per
+  /// file, which stalls the UI thread; with it, History still advances in
+  /// near-real time.
+  void _mirrorProgressToHistory(Transfer transfer) {
+    final now = DateTime.now();
+    final last = _lastHistoryMirror[transfer.id];
+    if (last != null && now.difference(last).inMilliseconds < 700) return;
+    _lastHistoryMirror[transfer.id] = now;
+    _historyService.refreshTransfer(transfer);
+  }
+
   /// Refreshes a transfer snapshot with the aggregated per-file progress and
   /// live speed/ETA. Extracted so both the receive path (HTTP chunk handler)
   /// and the send path (multipart upload loop) compute progress identically.
@@ -116,13 +132,16 @@ class TransferService extends ChangeNotifier {
       }
     }
 
-    _transfers[transferId] = transfer.copyWith(
+    final updated = transfer.copyWith(
       transferredBytes: transferredBytes,
       speed: speed,
       etaSeconds: eta,
       files: files,
     );
+    _transfers[transferId] = updated;
     notifyListeners();
+    // Mirror realtime progress into History so it never lags at 0%.
+    _mirrorProgressToHistory(updated);
   }
 
   Future<void> _handleIncomingRequest(HttpRequest request) async {
@@ -295,6 +314,9 @@ class TransferService extends ChangeNotifier {
     );
 
     _transfers[newTransfer.id] = newTransfer;
+    // Persist immediately so History shows the incoming transfer live from
+    // 0% instead of only appearing after completion.
+    await _historyService.addTransfer(newTransfer);
     notifyListeners();
 
     final res = TransferInitResponse(
@@ -403,6 +425,8 @@ class TransferService extends ChangeNotifier {
         // Keep the sender pinned in discovery while bytes are flowing.
         _touchPeer(transfer.peerDevice);
         notifyListeners();
+        // Mirror realtime receive progress into History.
+        _mirrorProgressToHistory(_transfers[transferId]!);
       }
 
       await sink.flush();
