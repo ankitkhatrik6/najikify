@@ -5,7 +5,7 @@
 /// Keep it in sync whenever the release version is bumped.
 class AppConstants {
   static const String appName = 'Najikify';
-  static const String appVersion = '1.0.2';
+  static const String appVersion = '1.0.3';
   static const String appAuthor = 'Ankit Khatri KC';
   static const String githubRepoUrl = 'https://github.com/ankitkhatrik6/najikify';
   

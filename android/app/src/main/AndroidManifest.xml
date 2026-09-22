@@ -5,13 +5,23 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
 
-    <!-- Storage permissions for saving incoming files and reading folders -->
+    <!--
+      Storage permissions.
+
+      Najikify only ever writes to the app's own external files directory
+      (Android/data/com.najikify.app/files/Download/Najikify, resolved through
+      path_provider) and picks files through the Storage Access Framework
+      (file_selector), which grants access per-URI at runtime.
+
+      That means none of the broad storage permissions below are needed on
+      modern Android. They were previously declared (MANAGE_EXTERNAL_STORAGE,
+      READ_MEDIA_*, requestLegacyExternalStorage) and made Najikify look like a
+      "all files access" app to Google Play Protect, which contributed to the
+      "Play Protect hasn't seen an app from this developer before" block.
+      Only the legacy permissions required on Android 9 and older are kept.
+    -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
 
     <!-- Camera permission for scanning pairing QR codes -->
     <uses-permission android:name="android.permission.CAMERA"/>
@@ -24,7 +34,6 @@
         android:label="Najikify"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"

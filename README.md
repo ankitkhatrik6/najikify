@@ -16,8 +16,8 @@ No cloud. No accounts. No third-party uploads. Your data never leaves your Wi-Fi
 [![Release](https://img.shields.io/badge/Release-Latest-0969DA?style=flat-square&logo=github&logoColor=white)](https://github.com/ankitkhatrik6/najikify/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-3.47-0969DA?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.13-0969DA?style=flat-square&logo=dart&logoColor=white)](https://dart.dev)
-[![Debian](https://img.shields.io/badge/Package-.deb-0969DA?style=flat-square&logo=debian&logoColor=white)](https://github.com/ankitkhatrik6/najikify/releases/download/v1.0.2/najikify-linux-1.0.2-amd64.deb)
-[![Android](https://img.shields.io/badge/Package-.apk-0969DA?style=flat-square&logo=android&logoColor=white)](https://github.com/ankitkhatrik6/najikify/releases/download/v1.0.2/najikify-android-1.0.2.apk)
+[![Debian](https://img.shields.io/badge/Package-.deb-0969DA?style=flat-square&logo=debian&logoColor=white)](https://github.com/ankitkhatrik6/najikify/releases/latest)
+[![Android](https://img.shields.io/badge/Package-.apk-0969DA?style=flat-square&logo=android&logoColor=white)](https://github.com/ankitkhatrik6/najikify/releases/latest)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux_|_Android-0969DA?style=flat-square&logo=linux&logoColor=white)](#supported-platforms)
 [![License](https://img.shields.io/badge/License-MIT-0969DA?style=flat-square&logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-0969DA?style=flat-square&logo=git&logoColor=white)](CONTRIBUTING.md)
@@ -102,7 +102,7 @@ Prebuilt artifacts are published automatically by GitHub Actions.
 Download the `.deb` from [Releases](https://github.com/ankitkhatrik6/najikify/releases/latest), then install it and open the required firewall ports so peers can discover and reach each other:
 
 ```bash
-sudo apt install ./najikify-linux-1.0.0-amd64.deb
+sudo apt install ./najikify-linux-<version>-amd64.deb
 
 sudo ufw allow 53317/tcp
 sudo ufw allow 53318/udp
@@ -171,7 +171,7 @@ sequenceDiagram
     Note over A,B: Both sides record the transfer in local SQLite
 ```
 
-1. **Discovery.** Each peer broadcasts a presence announcement on UDP `53318` every 4 seconds and drops peers that stay silent for 12 seconds.
+1. **Discovery.** Each peer broadcasts a presence announcement on UDP `53318` every 4 seconds and drops peers that stay silent for 30 seconds. Peers with an in-flight transfer are pinned, so they stay listed while bytes are flowing and for a full freshness window afterwards.
 2. **Handshake.** The sender calls `/handshake` on the receiver's HTTP server to exchange device metadata and obtain a session token.
 3. **Transfer.** Files stream over HTTP to the receiver. Progress, speed and ETA update live on both ends.
 4. **Verification.** Checksums are compared per file. Conflicts resolve via replace, keep-both, or skip.
@@ -299,8 +299,92 @@ najikify/
 <br />
 
 - Run the app from a terminal (`najikify`) to watch live logs.
-- Verify the receiver is still running and the peer has not gone stale (12 s timeout).
+- Verify the receiver is still running and the peer has not gone stale (30 s timeout).
 - Large transfers may need the machine to stay awake.
+
+</details>
+
+<details>
+<summary><b>“No devices found” right after a transfer finished</b></summary>
+
+<br />
+
+Peers used to be dropped after 12 s of silence, which could hide a device the
+moment a transfer ended or during a brief Wi-Fi hiccup. **Fixed in v1.0.3**:
+
+- A peer involved in an active transfer is pinned and never swept as stale.
+- When a transfer finishes its `lastSeen` is refreshed, so it stays listed for
+  another full 30 s window.
+- QR-paired peers are restored from the local database, so the device list is
+  never empty after a send even if UDP announcements were missed.
+- Discovery re-probes 2 s after start-up, covering a lost first probe.
+
+</details>
+
+<details>
+<summary><b>Progress stuck at 0%, or history showing the wrong percentage</b></summary>
+
+<br />
+
+**Fixed in v1.0.3.** The bar previously tracked only the file currently in
+flight and the final snapshot could be written without the byte total, so a
+finished multi-file transfer could read `0%`.
+
+- Progress is now aggregated across **all** files in the transfer, so a
+  multi-package send advances smoothly from 0 → 100%.
+- Completion writes the full byte count, so a finished transfer always shows
+  100% in Transfers and History.
+- Live progress is mirrored into History (throttled to one write per 700 ms),
+  so History tracks the transfer in near-real time instead of only updating at
+  the end.
+- Incoming transfers are persisted when they start, not only when they finish.
+
+</details>
+
+<details>
+<summary><b>App version in Settings shows an old number</b></summary>
+
+<br />
+
+The Settings screen reads `AppConstants.appVersion` from
+`lib/core/constants/app_constants.dart`, which is a separate constant from
+`pubspec.yaml`. If it drifts, Settings shows the wrong version. **Fixed in
+v1.0.3** — keep the two in sync when bumping a release (the constant now carries
+a comment saying so).
+
+</details>
+
+<details>
+<summary><b>Play Protect blocks the APK: “App blocked to protect your device”</b></summary>
+
+<br />
+
+> Play Protect hasn't seen an app from this developer before. It may be unsafe.
+
+This is Play Protect's **“Uncommon”** category. **Fixed in v1.0.3** in two ways:
+
+1. **Release APKs are now signed with a dedicated release key.** Earlier
+   releases were signed with the shared Android debug key (`androiddebugkey`),
+   a globally known untrusted identity — a direct trigger for this warning.
+   Details and the certificate fingerprint: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
+2. **Broad storage permissions were removed.** `MANAGE_EXTERNAL_STORAGE`
+   (“all files access”), `READ_MEDIA_*` and `requestLegacyExternalStorage` are
+   no longer declared — Najikify only writes to its own app directory and picks
+   files through the system file picker, so it no longer looks like a
+   high-risk storage app.
+
+Verify a downloaded APK really is ours:
+
+```bash
+apksigner verify --print-certs najikify-android-<version>.apk
+# SHA-256 must equal the fingerprint in docs/RELEASE_SIGNING.md
+```
+
+If your device still blocks the install, either tap **Install anyway** in the
+dialog or switch off Play Protect scanning temporarily
+(*Play Store → Profile → Play Protect → Settings*). A brand-new signing key can
+still be reported as “uncommon” for the first installations while Google builds
+up reputation for it.
 
 </details>
 
