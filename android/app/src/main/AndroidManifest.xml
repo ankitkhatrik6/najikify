@@ -30,6 +30,10 @@
     <!-- Prevent system sleep during large file transfers -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
+    <!-- Android 13+ runtime permission, needed to post the "update available"
+         notification (see NotificationGateway / MainActivity). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="Najikify"
         android:name="${applicationName}"
