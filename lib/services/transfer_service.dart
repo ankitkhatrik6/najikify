@@ -29,6 +29,9 @@ typedef IncomingTransferCallback = Future<bool> Function(
   String savePath,
 );
 
+/// Fired once per transfer that finishes successfully (send or receive).
+typedef TransferCompletedCallback = void Function(Transfer transfer);
+
 class TransferService extends ChangeNotifier {
   static final TransferService _instance = TransferService._internal();
   factory TransferService() => _instance;
@@ -48,6 +51,10 @@ class TransferService extends ChangeNotifier {
   final Map<String, IOSink> _activeFileSinks = {};
 
   IncomingTransferCallback? onIncomingTransfer;
+
+  /// Optional hook (wired by the app shell) shown as a "Rate us"-style dialog
+  /// after each successful transfer — e.g. the GitHub star prompt.
+  TransferCompletedCallback? onTransferCompleted;
 
   bool get isServerRunning => _isServerRunning;
   List<Transfer> get allTransfers => _transfers.values.toList()
@@ -466,6 +473,7 @@ class TransferService extends ChangeNotifier {
         _releasePeer(updatedTransfer.peerDevice);
         await _historyService.addTransfer(completed);
         notifyListeners();
+        _notifyTransferCompleted(completed);
       }
 
       request.response.statusCode = HttpStatus.ok;
@@ -738,6 +746,7 @@ class TransferService extends ChangeNotifier {
       _releasePeer(peer);
       await _historyService.addTransfer(completed);
       notifyListeners();
+      _notifyTransferCompleted(completed);
     } catch (e) {
       final current = _transfers[transferId];
       if (current != null && current.state != TransferState.cancelled) {
@@ -792,6 +801,17 @@ class TransferService extends ChangeNotifier {
     _server = null;
     _isServerRunning = false;
     notifyListeners();
+  }
+
+  /// Fires [onTransferCompleted] without letting a prompt ever break the
+  /// transfer bookkeeping above — a misbehaving listener must not crash or
+  /// stall the service.
+  void _notifyTransferCompleted(Transfer completed) {
+    try {
+      onTransferCompleted?.call(completed);
+    } catch (_) {
+      // Prompt hooks are best-effort; ignore listener errors.
+    }
   }
 
   @override
