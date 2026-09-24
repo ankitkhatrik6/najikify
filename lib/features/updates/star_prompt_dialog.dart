@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../services/star_prompt_service.dart';
 
-/// Random, self-dismissing \"Do you like Najikify?\" prompt.
-///
-/// Shown at most occasionally (see [StarPromptService]) and closes itself
-/// after [StarPromptService.autoDismissAfter] without user interaction.
+/// "Rate us"-style "Do you like Najikify?" prompt, shown after a successful
+/// transfer (see [StarPromptService]) and closing itself after
+/// [StarPromptService.autoDismissAfter] without user interaction.
 class StarPromptDialog extends StatefulWidget {
   const StarPromptDialog({super.key});
 
@@ -54,8 +53,8 @@ class _StarPromptDialogState extends State<StarPromptDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'If Najikify makes sharing files easier, a GitHub star keeps the '
-            'project going. It takes a few seconds.',
+            'Your file just arrived safely. If Najikify makes sharing easier, '
+            'a GitHub star keeps the project going — it takes a few seconds.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),

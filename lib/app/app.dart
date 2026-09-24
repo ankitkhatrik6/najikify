@@ -5,7 +5,7 @@ import '../core/constants/app_constants.dart';
 import '../features/transfers/incoming_transfer_dialog.dart';
 import '../features/updates/star_prompt_dialog.dart';
 import '../features/updates/update_available_dialog.dart';
-import '../models/app_update.dart';
+import '../models/transfer.dart';
 import '../services/discovery_service.dart';
 import '../services/history_service.dart';
 import '../services/network_service.dart';
@@ -50,45 +50,44 @@ class _NajikifyAppState extends State<NajikifyApp> {
       return result ?? false;
     };
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _runStartupPrompts());
-  }
+    // "Rate us"-style prompt: after each successful transfer offer the GitHub
+    // star dialog (gated inside StarPromptService, never random on startup).
+    transferService.onTransferCompleted = _maybeShowStarPromptAfterTransfer;
 
-  Future<void> _runStartupPrompts() async {
-    final update = await _checkForUpdatesOnStart();
-    if (!mounted) return;
-    await _maybeShowStarPrompt(hasPendingUpdate: update != null);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdatesOnStart());
   }
 
   /// Runs the throttled update check after the first frame and offers the new
   /// release in-app. The service also posts a system notification (Android /
-  /// Linux), at most once per discovered version. Returns the update so the
-  /// star prompt can yield to it.
-  Future<AppUpdate?> _checkForUpdatesOnStart() async {
+  /// Linux), at most once per discovered version.
+  Future<void> _checkForUpdatesOnStart() async {
     final updateService = UpdateService();
     try {
       final update = await updateService.checkForUpdates();
-      if (!mounted || update == null) return update;
+      if (!mounted || update == null) return;
 
       final navigatorContext = rootNavigatorKey.currentState?.context;
       if (navigatorContext == null || !navigatorContext.mounted) {
-        return update;
+        return;
       }
       await UpdateAvailableDialog.showIfAvailable(navigatorContext, update);
-      return update;
+      return;
     } catch (_) {
       // An update check must never interfere with app startup.
-      return null;
+      return;
     }
   }
 
-  /// Shows the occasional \"Do you like Najikify?\" prompt: random, at most
-  /// once per 14 days, never before the 5th launch, auto-dismissed after 5
-  /// seconds, and never competing with an update dialog.
-  Future<void> _maybeShowStarPrompt({required bool hasPendingUpdate}) async {
+  /// "Rate us"-style flow: called by [TransferService] once per successful
+  /// transfer. Counts the completion, then shows the star dialog only when
+  /// the service gates pass (min transfers, spacing, no pending update).
+  /// Never blocks or fails the transfer UI — everything is best-effort.
+  void _maybeShowStarPromptAfterTransfer(Transfer completed) {
     final starService = StarPromptService();
-    try {
-      await starService.recordLaunch();
-      final show = await starService.shouldShow(
+    starService.recordCompletedTransfer().then((_) async {
+      if (!mounted) return;
+      final hasPendingUpdate = UpdateService().availableUpdate != null;
+      final show = await starService.shouldShowAfterTransfer(
         hasPendingUpdate: hasPendingUpdate,
       );
       if (!show || !mounted) return;
@@ -102,9 +101,9 @@ class _NajikifyAppState extends State<NajikifyApp> {
         barrierDismissible: true,
         builder: (_) => const StarPromptDialog(),
       );
-    } catch (_) {
-      // A star prompt must never interfere with app startup.
-    }
+    }).catchError((_) {
+      // A star prompt must never interfere with transfers.
+    });
   }
 
   @override
