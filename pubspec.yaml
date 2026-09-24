@@ -47,6 +47,9 @@ dependencies:
   device_info_plus: ^10.0.0
   network_info_plus: ^5.0.1
 
+  # Opening links (GitHub releases / star prompt) in the system browser
+  url_launcher: ^6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
