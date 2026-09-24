@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:najikify/app/theme.dart';
+import 'package:najikify/features/settings/about_najikify_screen.dart';
+import 'package:najikify/widgets/app_logo.dart';
 import 'package:najikify/widgets/empty_state.dart';
 
 void main() {
@@ -30,5 +32,22 @@ void main() {
       (WidgetTester tester) async {
     expect(AppTheme.lightTheme.colorScheme.primary, isNot(0x00000000));
     expect(AppTheme.darkTheme.colorScheme.primary, isNot(0x00000000));
+  });
+
+  testWidgets('AboutNajikifyScreen shows logo, description and support actions',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const AboutNajikifyScreen(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(AppLogo), findsWidgets);
+    expect(find.text('About Najikify'), findsOneWidget);
+    expect(find.textContaining('star on GitHub'), findsOneWidget);
+    expect(find.textContaining('View source'), findsOneWidget);
+    expect(find.text('How it works'), findsOneWidget);
   });
 }
