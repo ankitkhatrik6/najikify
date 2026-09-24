@@ -1,23 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:najikify/core/utils/version_utils.dart';
 import 'package:najikify/services/star_prompt_service.dart';
-
-/// Deterministic pseudo-random source for the probability gate tests.
-class _FixedRandom implements math.Random {
-  final double value;
-  _FixedRandom(this.value);
-
-  @override
-  double nextDouble() => value;
-
-  @override
-  int nextInt(int max) => 0;
-
-  @override
-  bool nextBool() => value >= 0.5;
-}
 
 void main() {
   group('StarPromptService policy', () {
@@ -44,9 +28,10 @@ void main() {
       );
     });
 
-    test('fixed random source behaves deterministically', () {
-      expect(_FixedRandom(0.0).nextDouble(), 0.0);
-      expect(_FixedRandom(0.99).nextDouble(), 0.99);
+    test('version comparison treats debug-signed 1.0.2 as older', () {
+      expect(VersionUtils.isNewer('1.0.3', '1.0.2'), isTrue);
+      expect(VersionUtils.isNewer('1.0.4', '1.0.3'), isTrue);
+      expect(VersionUtils.isNewer('1.0.3', '1.0.3'), isFalse);
     });
   });
 }

@@ -64,6 +64,11 @@ EOF
 chmod 0755 "${PACKAGE_DIR}/DEBIAN/postinst" "${PACKAGE_DIR}/DEBIAN/postrm"
 
 # 5. Write control file
+# Replaces: the .deb keeps the stable package identity (name + arch) and a
+# strictly increasing Version so `sudo apt install ./najikify-*.deb` upgrades
+# the installed release instead of conflicting with it. (A conflicting
+# applicationId or a downgraded versionCode would produce the same error on
+# Android; both are kept stable there too.)
 cat << EOF > "${PACKAGE_DIR}/DEBIAN/control"
 Package: ${APP_NAME}
 Version: ${VERSION}
