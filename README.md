@@ -70,7 +70,7 @@ Everything happens device-to-device. There is no server in the middle, nothing t
 | **Local history** | Every transfer is recorded in a local SQLite database on each device. |
 | **Cross-platform** | Linux desktop and Android from a single Flutter codebase. |
 | **Self-updating** | Checks GitHub Releases for newer builds, notifies on Android/Linux, and offers the download in-app. |
-| **Community prompt** | Occasionally asks for a GitHub star — random, never nagging, closes itself after 5 seconds. |
+| **Community prompt** | After a successful transfer, occasionally asks for a GitHub star — rate-us style, never nagging, closes itself after 5 seconds. |
 
 ## Supported Platforms
 
@@ -429,11 +429,12 @@ Both work identically on **Linux and Android**:
   once per 6 hours) and posts a system notification (Android notification /
   Linux `notify-send`, at most once per version). Tapping it, the Home banner,
   or *Settings → Check for Updates* opens the download.
-- **“Do you like Najikify?” star prompt:** appears at most occasionally —
-  never before the 5th launch, at most once every 14 days, only on a ~15%
-  random roll, never while an update is waiting — and **closes itself after 5
+- **“Do you like Najikify?” star prompt:** appears only after a file
+  transfer completes (rate-us style, never on startup) — from the 2nd
+  completed transfer, at most every 5th completion and once every 14 days,
+  never while an update is waiting — and **closes itself after 5
   seconds**. *Star on GitHub* opens the repo; *Don't ask again* silences it
-  for good.
+  for good. A matching entry lives under *Settings → About Najikify*.
 
 </details>
 
