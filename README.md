@@ -69,6 +69,8 @@ Everything happens device-to-device. There is no server in the middle, nothing t
 | **Live progress** | Progress, speed and ETA update in real time on both the sender and the receiver. |
 | **Local history** | Every transfer is recorded in a local SQLite database on each device. |
 | **Cross-platform** | Linux desktop and Android from a single Flutter codebase. |
+| **Self-updating** | Checks GitHub Releases for newer builds, notifies on Android/Linux, and offers the download in-app. |
+| **Community prompt** | Occasionally asks for a GitHub star — random, never nagging, closes itself after 5 seconds. |
 
 ## Supported Platforms
 
@@ -133,7 +135,13 @@ bash packaging/linux/build_deb.sh           # -> build/najikify-linux-<version>-
 3. Grant camera (QR pairing) and storage/media permissions on first launch.
 
 > [!NOTE]
-> The APK is signed with the debug key so it installs directly on any device. For Play Store distribution, configure a release keystore.
+> Release APKs are signed with a dedicated release key (never the debug key),
+> so skipping ahead normally installs cleanly over the previous release. The
+> one exception: builds up to **1.0.2** were debug-signed, and Android refuses
+> to upgrade those in place (“app not installed as package conflicts with an
+> existing package”) — uninstall once, install the new version, and every later
+> update installs normally. Details and the certificate fingerprint:
+> [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
 
 ## Quick Start
 
@@ -385,6 +393,47 @@ dialog or switch off Play Protect scanning temporarily
 (*Play Store → Profile → Play Protect → Settings*). A brand-new signing key can
 still be reported as “uncommon” for the first installations while Google builds
 up reputation for it.
+
+</details>
+
+<details>
+<summary><b>“App not installed as package conflicts with an existing package” (Android)</b></summary>
+
+<br />
+
+Android refuses to install an update signed with a **different key** than the
+installed build. Najikify releases up to **1.0.2** were signed with the shared
+Android debug key; every release from **1.0.3** onwards shares one stable
+release key. So:
+
+- **1.0.2 (or older) → newer:** uninstall Najikify once, then install the new
+  APK. Afterwards every update installs normally over the previous one.
+- **1.0.3 → newer:** installs cleanly in place, no uninstall needed.
+- Every release runs a CI check (`apksigner verify --print-certs`) that fails
+  the build if the APK ever regresses to debug signing.
+
+A different `applicationId` or a downgrade to an older `versionCode` produces
+the same message — Najikify keeps both stable (`com.najikify.app`, strictly
+increasing `versionCode`).
+
+</details>
+
+<details>
+<summary><b>How do update checks and the “Do you like Najikify?” prompt behave?</b></summary>
+
+<br />
+
+Both work identically on **Linux and Android**:
+
+- **Update available:** the app checks GitHub Releases at startup (throttled to
+  once per 6 hours) and posts a system notification (Android notification /
+  Linux `notify-send`, at most once per version). Tapping it, the Home banner,
+  or *Settings → Check for Updates* opens the download.
+- **“Do you like Najikify?” star prompt:** appears at most occasionally —
+  never before the 5th launch, at most once every 14 days, only on a ~15%
+  random roll, never while an update is waiting — and **closes itself after 5
+  seconds**. *Star on GitHub* opens the repo; *Don't ask again* silences it
+  for good.
 
 </details>
 
