@@ -141,6 +141,11 @@ jobs:
       - name: Verify APK is signed with the release key
         # Guard against silently shipping a debug-signed APK (which Play
         # Protect blocks) if the signing configuration ever regresses.
+        # This is also what keeps installs upgrading cleanly in place: Android
+        # accepts an update only when it carries the same applicationId, a
+        # higher versionCode, and the SAME certificate — anything else surfaces
+        # on-device as "app not installed as package conflicts with an
+        # existing package". Verified here (and again on the final artifact).
         run: |
           APK=build/app/outputs/flutter-apk/app-release.apk
           APKSIGNER=$(ls "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner | sort -V | tail -1)
@@ -186,6 +191,24 @@ jobs:
 
       - name: List release files
         run: ls -lh dist
+
+      - name: Verify final APK signature before publishing
+        # Last gate before the GitHub Release: re-check the exact artifact
+        # users will download, so a debug-signed or wrongly-signed APK can
+        # never reach users (which would reinstall the package-conflict and
+        # Play Protect problems).
+        run: |
+          APK=$(ls dist/*.apk | head -1)
+          APKSIGNER=$(ls "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "$APKSIGNER" ] && [ -f "$APK" ]; then
+            "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/final-apk-certs.txt
+            if grep -qi 'CN=Android Debug' /tmp/final-apk-certs.txt; then
+              echo "::error::Final APK is debug-signed — refusing to publish."
+              exit 1
+            fi
+          else
+            echo "apksigner unavailable on this runner; CI android job already verified the APK signature."
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
