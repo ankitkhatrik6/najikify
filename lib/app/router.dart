@@ -6,6 +6,7 @@ import '../features/home/home_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/transfers/transfers_screen.dart';
 import '../services/transfer_service.dart';
+import '../widgets/app_logo.dart';
 
 class MainNavigationScaffold extends StatefulWidget {
   const MainNavigationScaffold({super.key});
@@ -23,8 +24,6 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isDesktop = MediaQuery.of(context).size.width >= 768;
 
     final transferService = context.watch<TransferService>();
@@ -46,19 +45,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
               selectedIndex: _currentIndex,
               onDestinationSelected: _onTabSelected,
               labelType: NavigationRailLabelType.all,
-              leading: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.near_me_rounded, color: Colors.white, size: 24),
-                  ),
-                ),
+              leading: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: AppLogo(size: 44, borderRadius: 12),
               ),
               destinations: [
                 const NavigationRailDestination(
