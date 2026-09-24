@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/format_utils.dart';
+import '../../core/utils/version_utils.dart';
 import '../../models/device.dart';
 import '../../services/database_service.dart';
 import '../../services/network_service.dart';
 import '../../services/settings_service.dart';
+import '../../services/update_service.dart';
+import '../updates/update_available_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -218,6 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text('${AppConstants.appVersion} (Offline LAN Peer-to-Peer)'),
             leading: Icon(Icons.info_outline),
           ),
+          _buildUpdateTile(context),
           ListTile(
             title: const Text('Open Source Licenses'),
             subtitle: const Text('View licenses for third-party libraries'),
@@ -230,6 +235,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// "Check for updates" entry: shows the current state and lets the user
+  /// trigger a check on demand (the automatic check runs at most every 6 hours).
+  Widget _buildUpdateTile(BuildContext context) {
+    final updateService = context.watch<UpdateService>();
+    final update = updateService.availableUpdate;
+
+    String subtitle;
+    if (updateService.isChecking) {
+      subtitle = 'Checking GitHub for a newer version...';
+    } else if (update != null) {
+      subtitle = 'Najikify ${VersionUtils.withPrefix(update.version)} is available';
+    } else if (updateService.lastError != null) {
+      subtitle = updateService.lastError!;
+    } else if (updateService.lastCheckedAt != null) {
+      subtitle = 'Up to date • checked ${FormatUtils.formatDateTime(updateService.lastCheckedAt!)}';
+    } else {
+      subtitle = 'You are on the latest version';
+    }
+
+    return ListTile(
+      title: const Text('Check for Updates'),
+      subtitle: Text(subtitle),
+      leading: Icon(
+        update != null
+            ? Icons.system_update_alt_rounded
+            : Icons.cloud_download_outlined,
+        color: update != null ? Theme.of(context).colorScheme.primary : null,
+      ),
+      trailing: updateService.isChecking
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : (update != null
+              ? const Icon(Icons.chevron_right_rounded)
+              : const Icon(Icons.refresh_rounded, size: 20)),
+      onTap: updateService.isChecking
+          ? null
+          : () async {
+              if (update != null) {
+                await UpdateAvailableDialog.showIfAvailable(context, update);
+                return;
+              }
+              final result = await updateService.checkForUpdates(force: true);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    result != null
+                        ? 'Najikify ${VersionUtils.withPrefix(result.version)} is available'
+                        : (updateService.lastError ??
+                            'You are on the latest version (${AppConstants.appVersion})'),
+                  ),
+                ),
+              );
+            },
     );
   }
 

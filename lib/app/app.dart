@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../core/constants/app_constants.dart';
 import '../features/transfers/incoming_transfer_dialog.dart';
+import '../features/updates/update_available_dialog.dart';
 import '../services/discovery_service.dart';
 import '../services/history_service.dart';
 import '../services/network_service.dart';
 import '../services/pairing_service.dart';
 import '../services/settings_service.dart';
 import '../services/transfer_service.dart';
+import '../services/update_service.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -44,6 +46,25 @@ class _NajikifyAppState extends State<NajikifyApp> {
 
       return result ?? false;
     };
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdatesOnStart());
+  }
+
+  /// Runs the throttled update check after the first frame and offers the new
+  /// release in-app. The service also posts a system notification (Android /
+  /// Linux), at most once per discovered version.
+  Future<void> _checkForUpdatesOnStart() async {
+    final updateService = UpdateService();
+    try {
+      final update = await updateService.checkForUpdates();
+      if (!mounted || update == null) return;
+
+      final navigatorContext = rootNavigatorKey.currentContext;
+      if (navigatorContext == null || !navigatorContext.mounted) return;
+      await UpdateAvailableDialog.showIfAvailable(navigatorContext, update);
+    } catch (_) {
+      // An update check must never interfere with app startup.
+    }
   }
 
   @override
@@ -56,6 +77,7 @@ class _NajikifyAppState extends State<NajikifyApp> {
         ChangeNotifierProvider.value(value: TransferService()),
         ChangeNotifierProvider.value(value: HistoryService()),
         ChangeNotifierProvider.value(value: PairingService()),
+        ChangeNotifierProvider.value(value: UpdateService()),
       ],
       child: Consumer<SettingsService>(
         builder: (context, settings, _) {

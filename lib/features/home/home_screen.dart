@@ -15,6 +15,7 @@ import '../../widgets/device_card.dart';
 import '../../widgets/empty_state.dart';
 import '../pairing/qr_display_dialog.dart';
 import '../pairing/qr_scanner_screen.dart';
+import '../updates/update_banner.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -324,6 +325,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 16),
                       ],
+
+                      // Update available banner (renders nothing when the app
+                      // is up to date)
+                      const UpdateAvailableBanner(),
 
                       // Section Title & Connect Button
                       Row(
