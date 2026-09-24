@@ -1,56 +1,56 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 
 import '../core/constants/app_constants.dart';
 import 'database_service.dart';
 import 'notification_gateway.dart';
 
-/// Occasionally asks the user to star Najikify on GitHub.
+/// Asks the user to star Najikify on GitHub right after a moment of delight —
+/// a successfully finished file transfer (like the "Rate us" prompts in other
+/// apps).
 ///
 /// Rules (same on Linux and Android):
-/// * Never before the 5th app launch, so first-time users are left alone.
-/// * At most once every 14 days, and only on a ~15% random roll, so the
-///   prompt feels occasional rather than nagging.
+/// * Only after a transfer completes — never randomly on startup.
+/// * Never for the first [minCompletedTransfers] transfers, so the prompt is
+///   earned by a working app.
+/// * At most once every [promptInterval], and only every [promptEveryNth]
+///   completion after that, so it never nags.
 /// * Never while an update is available — the update flow has priority.
-/// * The dialog auto-dismisses after 5 seconds without any user action.
-/// * \"Don't ask again\" is remembered forever (until app data is cleared).
+/// * The dialog auto-dismisses after [autoDismissAfter] without any action.
+/// * "Don't ask again" and a completed star are remembered forever (until app
+///   data is cleared).
 class StarPromptService extends ChangeNotifier {
   static final StarPromptService _instance = StarPromptService._internal();
   factory StarPromptService() => _instance;
-  StarPromptService._internal() : _random = math.Random();
+  StarPromptService._internal();
 
-  /// Minimum launches before the prompt can ever appear.
-  static const int minLaunches = 5;
+  /// Minimum completed transfers before the prompt can ever appear.
+  static const int minCompletedTransfers = 2;
 
   /// Minimum gap between two prompts.
   static const Duration promptInterval = Duration(days: 14);
 
-  /// Probability (0..1) of showing once the other gates pass.
-  static const double showProbability = 0.15;
+  /// After the first prompt, show at most every Nth completed transfer
+  /// (combined with [promptInterval], whichever is stricter wins).
+  static const int promptEveryNth = 5;
 
   /// The dialog dismisses itself after this long.
   static const Duration autoDismissAfter = Duration(seconds: 5);
 
-  static const String _launchCountKey = 'star_launch_count';
+  static const String _completedCountKey = 'star_completed_count';
+  static const String _promptCountKey = 'star_prompt_count';
   static const String _lastPromptKey = 'star_last_prompt_ms';
   static const String _dismissedForeverKey = 'star_dismissed_forever';
   static const String _starredKey = 'star_starred';
 
   final DatabaseService _db = DatabaseService();
-  final math.Random _random;
 
   bool _isInitialized = false;
 
-  @visibleForTesting
-  StarPromptService.forTesting({math.Random? random})
-      : _random = random ?? math.Random();
-
-  /// True when every quiet condition holds and the random roll passes.
+  /// True when every quiet condition holds for the just-finished transfer.
   ///
   /// Pass [hasPendingUpdate] as true while an update dialog/banner is showing
   /// so the two prompts never compete.
-  Future<bool> shouldShow({bool hasPendingUpdate = false}) async {
+  Future<bool> shouldShowAfterTransfer({bool hasPendingUpdate = false}) async {
     if (hasPendingUpdate) return false;
     try {
       final dismissed =
@@ -58,9 +58,13 @@ class StarPromptService extends ChangeNotifier {
       if (dismissed) return false;
       if ((await _db.getSetting(_starredKey)) == '1') return false;
 
-      final launches =
-          int.tryParse(await _db.getSetting(_launchCountKey) ?? '0') ?? 0;
-      if (launches < minLaunches) return false;
+      final completed =
+          int.tryParse(await _db.getSetting(_completedCountKey) ?? '0') ?? 0;
+      if (completed < minCompletedTransfers) return false;
+
+      final prompts =
+          int.tryParse(await _db.getSetting(_promptCountKey) ?? '0') ?? 0;
+      if (prompts > 0 && completed % promptEveryNth != 0) return false;
 
       final lastRaw = await _db.getSetting(_lastPromptKey);
       if (lastRaw != null) {
@@ -73,19 +77,20 @@ class StarPromptService extends ChangeNotifier {
         }
       }
 
-      return _random.nextDouble() < showProbability;
+      return true;
     } catch (_) {
       return false;
     }
   }
 
-  /// Records one app launch; returns the new launch count.
-  Future<int> recordLaunch() async {
+  /// Records one successfully completed transfer; returns the new count.
+  /// This is the only trigger for the prompt — there is no startup/random path.
+  Future<int> recordCompletedTransfer() async {
     try {
       final current =
-          int.tryParse(await _db.getSetting(_launchCountKey) ?? '0') ?? 0;
+          int.tryParse(await _db.getSetting(_completedCountKey) ?? '0') ?? 0;
       final next = current + 1;
-      await _db.setSetting(_launchCountKey, next.toString());
+      await _db.setSetting(_completedCountKey, next.toString());
       return next;
     } catch (_) {
       return 0;
@@ -99,6 +104,9 @@ class StarPromptService extends ChangeNotifier {
         _lastPromptKey,
         DateTime.now().millisecondsSinceEpoch.toString(),
       );
+      final prompts =
+          int.tryParse(await _db.getSetting(_promptCountKey) ?? '0') ?? 0;
+      await _db.setSetting(_promptCountKey, (prompts + 1).toString());
     } catch (_) {}
     notifyListeners();
   }

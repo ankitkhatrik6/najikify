@@ -5,26 +5,22 @@ import 'package:najikify/services/star_prompt_service.dart';
 
 void main() {
   group('StarPromptService policy', () {
-    test('probability gate honors the random roll', () {
-      expect(StarPromptService.showProbability, greaterThan(0));
-      expect(StarPromptService.showProbability, lessThan(1));
+    test('prompt is transfer-triggered with a minimum completion count', () {
+      expect(StarPromptService.minCompletedTransfers, greaterThanOrEqualTo(2));
+    });
+
+    test('repeat prompts are spaced out (interval + every-Nth gate)', () {
+      expect(StarPromptService.promptEveryNth, greaterThanOrEqualTo(2));
+      expect(
+        StarPromptService.promptInterval,
+        const Duration(days: 14),
+      );
     });
 
     test('auto-dismiss is 5 seconds', () {
       expect(
         StarPromptService.autoDismissAfter,
         const Duration(seconds: 5),
-      );
-    });
-
-    test('prompt is gated behind a minimum launch count', () {
-      expect(StarPromptService.minLaunches, greaterThanOrEqualTo(5));
-    });
-
-    test('prompts are spaced at least two weeks apart', () {
-      expect(
-        StarPromptService.promptInterval,
-        const Duration(days: 14),
       );
     });
 
