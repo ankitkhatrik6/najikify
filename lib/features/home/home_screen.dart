@@ -405,6 +405,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     message: 'Make sure Najikify is open on other devices connected to this Wi-Fi network.',
                     actionLabel: 'Scan with QR Code',
                     onAction: () => _onConnectDevicePressed(context),
+                    isScanning: discovery.isDiscovering,
                   ),
                 )
               else
