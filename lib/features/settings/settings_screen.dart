@@ -10,7 +10,6 @@ import '../../services/database_service.dart';
 import '../../services/network_service.dart';
 import '../../services/settings_service.dart';
 import '../../services/update_service.dart';
-import '../../widgets/app_logo.dart';
 import '../updates/update_available_dialog.dart';
 import 'about_najikify_screen.dart';
 
@@ -219,22 +218,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Section: About
           _buildSectionHeader(context, 'About Najikify'),
-          const ListTile(
-            title: Text('Version'),
-            subtitle: Text('${AppConstants.appVersion} (Offline LAN Peer-to-Peer)'),
-            leading: Icon(Icons.info_outline),
-          ),
-          _buildUpdateTile(context),
           ListTile(
             title: const Text('About Najikify'),
             subtitle: const Text(
               'What Najikify is, how it works and how to support it',
             ),
-            leading: const SizedBox(
-              width: 40,
-              height: 40,
-              child: Center(child: AppLogo(size: 36, borderRadius: 10)),
-            ),
+            leading: const Icon(Icons.info_outline_rounded),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -242,6 +231,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+          const ListTile(
+            title: Text('Version'),
+            subtitle: Text('${AppConstants.appVersion} (Offline LAN Peer-to-Peer)'),
+            leading: Icon(Icons.tag_rounded),
+          ),
+          _buildUpdateTile(context),
           ListTile(
             title: const Text('Open Source Licenses'),
             subtitle: const Text('View licenses for third-party libraries'),

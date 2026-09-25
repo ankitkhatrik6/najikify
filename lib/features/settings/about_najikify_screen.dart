@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../services/notification_gateway.dart';
-import '../../services/star_prompt_service.dart';
 import '../../widgets/app_logo.dart';
+import 'support_momo_dialog.dart';
 /// Full "About Us" page for Najikify, reached from Settings → About Najikify.
 ///
 /// Describes what Najikify is, how it works, its key features, and how to
@@ -86,10 +86,10 @@ class AboutNajikifyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: () => StarPromptService().starNow(),
-            icon: const Icon(Icons.star_rounded, size: 18),
+            onPressed: () => SupportMomoDialog.show(context),
+            icon: const Icon(Icons.ramen_dining_rounded, size: 18),
             label: const Text(
-              'Support us - star on GitHub',
+              'Support us - Buy me a Momo',
               overflow: TextOverflow.visible,
               softWrap: false,
             ),
