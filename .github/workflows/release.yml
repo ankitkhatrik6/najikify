@@ -62,7 +62,7 @@ jobs:
         run: |
           DEB=$(ls build/*.deb | head -1)
           echo "Inspecting $DEB"
-          dpkg-deb -c "$DEB" | grep -o 'usr/share/applications/[^ ]*' | sort -u | tee /tmp/deb-launchers.txt
+          dpkg-deb -c "$DEB" | grep -o 'usr/share/applications/[^ ]*\.desktop' | sort -u | tee /tmp/deb-launchers.txt
           COUNT=$(wc -l < /tmp/deb-launchers.txt | tr -d ' ')
           if [ "$COUNT" -ne 1 ] || ! grep -q '^usr/share/applications/najikify\.desktop$' /tmp/deb-launchers.txt; then
             echo "::error::$DEB must contain exactly one launcher (usr/share/applications/najikify.desktop), found $COUNT."
@@ -269,7 +269,7 @@ jobs:
         run: |
           DEB=$(ls dist/*.deb | head -1)
           echo "Inspecting $DEB"
-          dpkg-deb -c "$DEB" | grep -o 'usr/share/applications/[^ ]*' | sort -u | tee /tmp/dist-deb-launchers.txt
+          dpkg-deb -c "$DEB" | grep -o 'usr/share/applications/[^ ]*\.desktop' | sort -u | tee /tmp/dist-deb-launchers.txt
           COUNT=$(wc -l < /tmp/dist-deb-launchers.txt | tr -d ' ')
           if [ "$COUNT" -ne 1 ] || ! grep -q '^usr/share/applications/najikify\.desktop$' /tmp/dist-deb-launchers.txt; then
             echo "::error::$DEB must contain exactly one launcher (usr/share/applications/najikify.desktop), found $COUNT."

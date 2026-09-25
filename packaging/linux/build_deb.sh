@@ -115,7 +115,7 @@ dpkg-deb --root-owner-group --build "${PACKAGE_DIR}" "${DEB_PATH}"
 
 # 7. Verify the finished package: it must ship exactly one Najikify launcher.
 # This is the check that would have caught the duplicate desktop entry.
-dpkg-deb -c "${DEB_PATH}" | grep -o 'usr/share/applications/[^ ]*' | sort -u > /tmp/najikify-deb-entries.txt || true
+dpkg-deb -c "${DEB_PATH}" | grep -o 'usr/share/applications/[^ ]*\.desktop' | sort -u > /tmp/najikify-deb-entries.txt || true
 DEB_ENTRY_COUNT="$(wc -l < /tmp/najikify-deb-entries.txt | tr -d ' ')"
 echo "Launchers inside ${DEB_PATH} (${DEB_ENTRY_COUNT}):"
 cat /tmp/najikify-deb-entries.txt
