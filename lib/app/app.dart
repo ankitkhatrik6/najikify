@@ -83,8 +83,8 @@ class _NajikifyAppState extends State<NajikifyApp> {
   /// the service gates pass (min transfers, spacing, no pending update).
   /// Never blocks or fails the transfer UI — everything is best-effort.
   void _maybeShowStarPromptAfterTransfer(Transfer completed) {
-    // Only prompt for completed transfers with success status
-    if (completed.status != TransferStatus.completed) return;
+    // Only prompt for transfers that really finished successfully.
+    if (completed.state != TransferState.completed) return;
 
     final starService = StarPromptService();
     starService.recordCompletedTransfer().then((_) async {

@@ -46,29 +46,43 @@ class _StarPromptDialogState extends State<StarPromptDialog> {
     final colorScheme = theme.colorScheme;
 
     return AlertDialog(
-      icon: Icon(Icons.favorite_rounded, color: colorScheme.primary),
+      icon: Icon(Icons.star_rounded, color: colorScheme.primary),
       title: const Text('Do you like Najikify?'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Your file just arrived safely. If Najikify makes sharing easier, '
-            'a GitHub star keeps the project going — it takes a few seconds.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your files just arrived safely. If Najikify makes sharing '
+              'easier, a GitHub star keeps the project going — it takes a '
+              'few seconds.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Closing in $_secondsLeft s…',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(
+                  Icons.timer_outlined,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Closing in $_secondsLeft s…',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      actionsAlignment: MainAxisAlignment.spaceBetween,
+      // Plain button list: AlertDialog's OverflowBar wraps the buttons on
+      // narrow phones, so nothing overflows on Android or small Linux windows.
       actions: [
         TextButton(
           onPressed: () {
@@ -77,23 +91,17 @@ class _StarPromptDialogState extends State<StarPromptDialog> {
           },
           child: const Text("Don't ask again"),
         ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Later'),
-            ),
-            const SizedBox(width: 4),
-            FilledButton.icon(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await StarPromptService().starNow();
-              },
-              icon: const Icon(Icons.star_rounded, size: 18),
-              label: const Text('Star on GitHub'),
-            ),
-          ],
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Later'),
+        ),
+        FilledButton.icon(
+          onPressed: () async {
+            Navigator.of(context).pop();
+            await StarPromptService().starNow();
+          },
+          icon: const Icon(Icons.star_rounded, size: 18),
+          label: const Text('Star on GitHub'),
         ),
       ],
     );
