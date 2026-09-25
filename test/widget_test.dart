@@ -107,7 +107,7 @@ void main() {
     );
   });
 
-  testWidgets('StarPromptDialog renders prompt, countdown and actions',
+  testWidgets('StarPromptDialog stays open until the user closes it',
       (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -117,12 +117,13 @@ void main() {
     );
 
     expect(find.text('Do you like Najikify?'), findsOneWidget);
-    expect(find.textContaining('Closing in'), findsOneWidget);
     expect(find.text('Star on GitHub'), findsOneWidget);
-    expect(find.text('Later'), findsOneWidget);
+    expect(find.text('Close'), findsOneWidget);
     expect(find.text("Don't ask again"), findsOneWidget);
 
-    // Let the auto-dismiss countdown finish so no timer stays pending.
-    await tester.pump(const Duration(seconds: 6));
+    // There is deliberately no auto-dismiss timer: after 10 seconds the prompt
+    // is still on screen and has to be closed by the user.
+    await tester.pump(const Duration(seconds: 10));
+    expect(find.text('Do you like Najikify?'), findsOneWidget);
   });
 }

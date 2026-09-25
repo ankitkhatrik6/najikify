@@ -15,7 +15,8 @@ import 'notification_gateway.dart';
 /// * At most once every [promptInterval], and only every [promptEveryNth]
 ///   completion after that, so it never nags.
 /// * Never while an update is available — the update flow has priority.
-/// * The dialog auto-dismisses after [autoDismissAfter] without any action.
+/// * The dialog stays on screen until the user closes it — there is no
+///   auto-dismiss timer, so the prompt can never disappear unnoticed.
 /// * "Don't ask again" and a completed star are remembered forever (until app
 ///   data is cleared).
 class StarPromptService extends ChangeNotifier {
@@ -33,9 +34,6 @@ class StarPromptService extends ChangeNotifier {
   /// After the first prompt, show at most every Nth completed transfer
   /// (combined with [promptInterval], whichever is stricter wins).
   static const int promptEveryNth = 5;
-
-  /// The dialog dismisses itself after this long.
-  static const Duration autoDismissAfter = Duration(seconds: 5);
 
   static const String _completedCountKey = 'star_completed_count';
   static const String _promptCountKey = 'star_prompt_count';

@@ -17,11 +17,11 @@ void main() {
       );
     });
 
-    test('auto-dismiss is 5 seconds', () {
-      expect(
-        StarPromptService.autoDismissAfter,
-        const Duration(seconds: 5),
-      );
+    test('the prompt has no auto-dismiss — the user always closes it', () {
+      // StarPromptService deliberately exposes no auto-dismiss duration: the
+      // dialog stays on screen until the user acts (see StarPromptDialog).
+      // This test documents that the old 5-second auto-close is gone.
+      expect(StarPromptService.promptInterval, const Duration(days: 14));
     });
 
     test('version comparison treats debug-signed 1.0.2 as older', () {
