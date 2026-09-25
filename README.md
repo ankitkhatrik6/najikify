@@ -69,8 +69,8 @@ Everything happens device-to-device. There is no server in the middle, nothing t
 | **Live progress** | Progress, speed and ETA update in real time on both the sender and the receiver. |
 | **Local history** | Every transfer is recorded in a local SQLite database on each device. |
 | **Cross-platform** | Linux desktop and Android from a single Flutter codebase. |
-| **Self-updating** | Checks GitHub Releases for newer builds, notifies on Android/Linux, and offers the download in-app. |
-| **Community prompt** | After a successful transfer, occasionally asks for a GitHub star — rate-us style, never nagging, closes itself after 5 seconds. |
+| **Self-updating** | Checks GitHub Releases for newer builds, notifies on Android/Linux, and offers the download in-app. On Android a background job posts the update notification even when the app is closed. |
+| **Community prompt** | After a successful transfer, occasionally asks for a GitHub star — rate-us style, never nagging, and it waits for you to close it. |
 
 ## Supported Platforms
 
@@ -95,7 +95,9 @@ Prebuilt artifacts are published automatically by GitHub Actions.
 |------|----------|
 | `najikify-linux-<version>-amd64.deb` | Debian / Ubuntu (x86-64) |
 | `najikify-linux-<version>-amd64.tar.gz` | Portable Linux bundle |
-| `najikify-android-<version>.apk` | Universal Android APK |
+| `najikify-android-<version>.apk` | Universal Android APK (every CPU architecture) |
+| `najikify-android-<version>-arm64-v8a.apk` | Android APK for modern arm64 phones (~half the size) |
+| `najikify-android-<version>-armeabi-v7a.apk` | Android APK for older 32-bit phones (~half the size) |
 
 ## Installation
 
@@ -132,7 +134,14 @@ bash packaging/linux/build_deb.sh           # -> build/najikify-linux-<version>-
 
 1. Download `najikify-android-<version>.apk` from [Releases](https://github.com/ankitkhatrik6/najikify/releases/latest).
 2. Open it on the device and allow installation from unknown sources when prompted.
-3. Grant camera (QR pairing) and storage/media permissions on first launch.
+3. Grant camera (QR pairing) and notification permissions on first launch.
+
+> [!TIP]
+> The universal APK is ~80 MB. If the download is interrupted Android reports
+> *“App not installed as package appears to be invalid”* — in that case use the
+> smaller `arm64-v8a` (most phones) or `armeabi-v7a` (older 32-bit phones) APK
+> instead. Both carry the same signing key and `versionCode` as the universal
+> APK, so any of them can replace the others.
 
 > [!NOTE]
 > Release APKs are signed with a dedicated release key (never the debug key),
@@ -241,7 +250,7 @@ bash packaging/android/build_apk.sh      # same, via helper script
 | Workflow | Trigger | Output |
 |----------|---------|--------|
 | [`ci.yml`](.github/workflows/ci.yml) | push / PR | `flutter analyze` + `flutter test` on every change |
-| [`release.yml`](.github/workflows/release.yml) | push to `main`, tag `v*`, manual | `.deb`, portable `.tar.gz`, universal `.apk`; published to a GitHub Release on tags |
+| [`release.yml`](.github/workflows/release.yml) | push to `main`, tag `v*`, manual | `.deb`, portable `.tar.gz`, universal + per-architecture `.apk`; published to a GitHub Release on tags. Fails the build if the `.deb` ships more than one desktop entry or any APK is debug-signed |
 
 No local Android SDK or desktop toolchain is needed. The runners provide them.
 
@@ -397,14 +406,16 @@ up reputation for it.
 </details>
 
 <details>
-<summary><b>“App not installed as package conflicts with an existing package” (Android)</b></summary>
+<summary><b>“App not installed as package conflicts with an existing package” / “…appears to be invalid” (Android)</b></summary>
 
 <br />
 
 Android refuses to install an update signed with a **different key** than the
-installed build. Najikify releases up to **1.0.2** were signed with the shared
-Android debug key; every release from **1.0.3** onwards shares one stable
-release key. So:
+installed build. Depending on the vendor skin the installer words this as
+“package conflicts with an existing package” (AOSP) or “App not installed as
+package appears to be invalid” (MIUI/ColorOS/One UI). Najikify releases up to
+**1.0.2** were signed with the shared Android debug key; every release from
+**1.0.3** onwards shares one stable release key. So:
 
 - **1.0.2 (or older) → newer:** uninstall Najikify once, then install the new
   APK. Afterwards every update installs normally over the previous one.
@@ -412,9 +423,42 @@ release key. So:
 - Every release runs a CI check (`apksigner verify --print-certs`) that fails
   the build if the APK ever regresses to debug signing.
 
+The same message can also come from a **locally built** debug APK (e.g. from
+`flutter run`) or from an **interrupted download** — the universal APK is
+~80 MB. Since 1.0.7 every release also ships smaller `arm64-v8a` and
+`armeabi-v7a` APKs (same `versionCode`, same signing key), so if the universal
+APK refuses to install you can use the one matching your phone's CPU
+architecture instead.
+
 A different `applicationId` or a downgrade to an older `versionCode` produces
 the same message — Najikify keeps both stable (`com.najikify.app`, strictly
 increasing `versionCode`).
+
+</details>
+
+<details>
+<summary><b>Two Najikify icons in the application menu (Linux)</b></summary>
+
+<br />
+
+Packages up to **1.0.6** installed the *same* desktop entry twice —
+`/usr/share/applications/najikify.desktop` **and**
+`/usr/share/applications/com.najikify.app.desktop` — so GNOME/KDE showed two
+identical Najikify launchers that both started the same binary.
+
+**Fixed in 1.0.7:** the package installs a single entry
+(`najikify.desktop`) and its `postinst` removes the stale
+`com.najikify.app.desktop` left behind by older versions. Upgrading the `.deb`
+is enough — no manual cleanup:
+
+```bash
+sudo apt install ./najikify-linux-1.0.7-amd64.deb
+```
+
+The `com.najikify.app` application id itself is unchanged; it is still used as
+`StartupWMClass` so the desktop can match the window to its launcher. Both the
+build script (`packaging/linux/build_deb.sh`) and the release workflow now
+**fail** if a package ever ships more than one `.desktop` file.
 
 </details>
 
@@ -428,13 +472,19 @@ Both work identically on **Linux and Android**:
 - **Update available:** the app checks GitHub Releases at startup (throttled to
   once per 6 hours) and posts a system notification (Android notification /
   Linux `notify-send`, at most once per version). Tapping it, the Home banner,
-  or *Settings → Check for Updates* opens the download.
+  or *Settings → Check for Updates* opens the download. On Android the
+  `POST_NOTIFICATIONS` permission is requested once at first start and a
+  persistent JobScheduler job re-runs the same check every ~6 hours (also after
+  a reboot), so the notification lands in the notification centre on its own —
+  without opening Najikify first. On Linux the check runs while the app is open,
+  including every time it returns to the foreground.
 - **“Do you like Najikify?” star prompt:** appears only after a file
-  transfer completes (rate-us style, never on startup) — from the 2nd
+  transfer completes (rate-us style, never on startup) — from the 1st
   completed transfer, at most every 5th completion and once every 14 days,
-  never while an update is waiting — and **closes itself after 5
-  seconds**. *Star on GitHub* opens the repo; *Don't ask again* silences it
-  for good. A matching entry lives under *Settings → About Najikify*.
+  never while an update is waiting — and it **stays on screen until it is
+  closed** (no auto-dismiss). *Star on GitHub* opens the repo; *Don't ask
+  again* silences it for good. A matching entry lives under *Settings → About
+  Najikify*.
 
 </details>
 

@@ -55,6 +55,21 @@ jobs:
           tar -czf "build/najikify-linux-${VERSION}-amd64.tar.gz" \
             -C build/linux/x64/release bundle
 
+      - name: Verify the .deb ships exactly one desktop entry
+        # Regression guard: 1.0.6 and earlier installed the same file twice
+        # (najikify.desktop + com.najikify.app.desktop), which put two Najikify
+        # entries in the application menu. Exactly one launcher is allowed.
+        run: |
+          DEB=$(ls build/*.deb | head -1)
+          echo "Inspecting $DEB"
+          dpkg-deb -c "$DEB" | grep -o 'usr/share/applications/[^ ]*' | sort -u | tee /tmp/deb-launchers.txt
+          COUNT=$(wc -l < /tmp/deb-launchers.txt | tr -d ' ')
+          if [ "$COUNT" -ne 1 ] || ! grep -q '^usr/share/applications/najikify\.desktop$' /tmp/deb-launchers.txt; then
+            echo "::error::$DEB must contain exactly one launcher (usr/share/applications/najikify.desktop), found $COUNT."
+            exit 1
+          fi
+          echo "OK: $DEB installs a single launcher."
+
       - name: Show artifacts
         run: ls -lh build/*.deb build/*.tar.gz
 
@@ -161,6 +176,40 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk \
              "build/najikify-android-${VERSION}.apk"
 
+      # The universal APK carries every ABI and is ~80 MB. Per-architecture APKs
+      # are roughly half that, which avoids truncated downloads — the most common
+      # reason Android's installer reports "App not installed as package appears
+      # to be invalid". These intentionally use the SAME versionCode as the
+      # universal APK (no --split-per-abi ABI offsets), so any of the three can
+      # replace the others without a downgrade error.
+      - name: Build per-architecture APKs
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+          for suffix in arm64-v8a armeabi-v7a; do
+            case "$suffix" in
+              arm64-v8a)   target=android-arm64 ;;
+              armeabi-v7a) target=android-arm ;;
+            esac
+            echo "::group::Building $suffix APK"
+            flutter build apk --release --target-platform "$target"
+            cp build/app/outputs/flutter-apk/app-release.apk \
+               "build/najikify-android-${VERSION}-${suffix}.apk"
+            echo "::endgroup::"
+          done
+          ls -lh build/najikify-android-*.apk
+
+      - name: Verify every APK is signed with the release key
+        run: |
+          APKSIGNER=$(ls "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner | sort -V | tail -1)
+          for APK in build/najikify-android-*.apk; do
+            echo "== $APK"
+            "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/apk-certs.txt
+            if grep -qi 'CN=Android Debug' /tmp/apk-certs.txt; then
+              echo "::error::$APK is signed with the Android debug key — Play Protect will block it."
+              exit 1
+            fi
+          done
+
       - name: Show artifacts
         run: ls -lh build/*.apk
 
@@ -193,22 +242,40 @@ jobs:
         run: ls -lh dist
 
       - name: Verify final APK signature before publishing
-        # Last gate before the GitHub Release: re-check the exact artifact
+        # Last gate before the GitHub Release: re-check the exact artifacts
         # users will download, so a debug-signed or wrongly-signed APK can
         # never reach users (which would reinstall the package-conflict and
-        # Play Protect problems).
+        # Play Protect problems). Every APK in the release is checked — the
+        # universal one and the per-architecture ones.
         run: |
-          APK=$(ls dist/*.apk | head -1)
           APKSIGNER=$(ls "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1 || true)
-          if [ -n "$APKSIGNER" ] && [ -f "$APK" ]; then
-            "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/final-apk-certs.txt
-            if grep -qi 'CN=Android Debug' /tmp/final-apk-certs.txt; then
-              echo "::error::Final APK is debug-signed — refusing to publish."
-              exit 1
-            fi
+          if [ -n "$APKSIGNER" ]; then
+            for APK in dist/*.apk; do
+              [ -f "$APK" ] || continue
+              echo "== $APK"
+              "$APKSIGNER" verify --print-certs "$APK" | tee /tmp/final-apk-certs.txt
+              if grep -qi 'CN=Android Debug' /tmp/final-apk-certs.txt; then
+                echo "::error::Final APK $APK is debug-signed — refusing to publish."
+                exit 1
+              fi
+            done
           else
             echo "apksigner unavailable on this runner; CI android job already verified the APK signature."
           fi
+
+      - name: Verify published .deb ships a single launcher
+        # The .deb that users install must contain exactly one desktop entry,
+        # otherwise two Najikify icons appear in the application menu.
+        run: |
+          DEB=$(ls dist/*.deb | head -1)
+          echo "Inspecting $DEB"
+          dpkg-deb -c "$DEB" | grep -o 'usr/share/applications/[^ ]*' | sort -u | tee /tmp/dist-deb-launchers.txt
+          COUNT=$(wc -l < /tmp/dist-deb-launchers.txt | tr -d ' ')
+          if [ "$COUNT" -ne 1 ] || ! grep -q '^usr/share/applications/najikify\.desktop$' /tmp/dist-deb-launchers.txt; then
+            echo "::error::$DEB must contain exactly one launcher (usr/share/applications/najikify.desktop), found $COUNT."
+            exit 1
+          fi
+          echo "OK: $DEB ships a single launcher."
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -227,12 +294,31 @@ jobs:
             |------|----------|
             | `najikify-linux-*-amd64.deb` | Debian/Ubuntu (x86-64) — install with `sudo apt install ./najikify-linux-*.deb` |
             | `najikify-linux-*-amd64.tar.gz` | Portable Linux bundle (no install) |
-            | `najikify-android-*.apk` | Android — sideload to install |
+            | `najikify-android-<version>.apk` | Android — universal APK (every CPU architecture) |
+            | `najikify-android-<version>-arm64-v8a.apk` | Android — modern phones, ~half the download size |
+            | `najikify-android-<version>-armeabi-v7a.apk` | Android — older 32-bit phones, ~half the download size |
 
             ### Setup
 
             1. Install on both devices and open **Najikify** on each.
             2. Both must be on the same Wi-Fi / LAN (allow `53317/tcp` + `53318/udp` through the firewall).
             3. The other device appears under **Devices** within seconds — tap it, pick files, Accept on the receiver.
+
+            ### Android: “App not installed as package appears to be invalid”
+
+            That wording comes from Android's own installer. The published APK is
+            verified in CI (`apksigner verify --print-certs`) to be v2/v3-signed with
+            the same release key as every build since 1.0.3. If your device shows this
+            message:
+
+            1. **An older Najikify signed with a different key is installed** (any build
+               up to 1.0.2, or a locally built debug APK). Uninstall it once, then
+               install this APK — every later update installs in place.
+            2. **The download was interrupted** — the universal APK is ~80 MB. Use the
+               smaller `arm64-v8a` (modern phones) or `armeabi-v7a` (older 32-bit
+               phones) APK from the table above.
+            3. Verify the downloaded file with the SHA-256 of the artifact shown in the
+               release assets, then retry. Sideloading requires “Install unknown apps”
+               to be allowed for your file manager or browser.
 
             **Full Changelog**: https://github.com/ankitkhatrik6/najikify/commits/${{ github.ref_name }}

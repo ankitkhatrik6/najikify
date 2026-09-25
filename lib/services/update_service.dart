@@ -17,6 +17,10 @@ import 'notification_gateway.dart';
 /// * Automatic checks are throttled to one every [checkInterval] so launching
 ///   the app repeatedly does not spam the GitHub API (60 unauthenticated
 ///   requests/hour are allowed per IP).
+/// * On Android a native periodic job (`UpdateCheckJobService`, armed through
+///   [NotificationGateway.scheduleBackgroundUpdateChecks]) runs the same check
+///   in the background, so the system notification appears even when the app is
+///   closed. Both paths share the "already announced" version.
 /// * A system notification is posted at most once per discovered version, so an
 ///   update the user already ignored does not keep popping up.
 /// * Every network failure is swallowed into [lastError]; the app works fully
@@ -75,6 +79,22 @@ class UpdateService extends ChangeNotifier {
     } catch (_) {
       // A missing settings row must not stop the app from starting.
     }
+
+    // On Android the native background check (UpdateCheckJobService) may have
+    // already announced a release while the app was closed. Take over the newer
+    // record so the same version is never announced twice.
+    try {
+      final nativeNotified = await _notifications.backgroundNotifiedVersion();
+      if (nativeNotified != null) {
+        final stored = _notifiedVersion;
+        if (stored == null || VersionUtils.isNewer(nativeNotified, stored)) {
+          _notifiedVersion = nativeNotified;
+        }
+      }
+    } catch (_) {
+      // Best effort: no bridge (or an older build) just means no shared state.
+    }
+
     _isInitialized = true;
     notifyListeners();
   }
@@ -176,6 +196,8 @@ class UpdateService extends ChangeNotifier {
       try {
         await _db.setSetting(_notifiedVersionKey, update.version);
       } catch (_) {}
+      // Keep the Android background check quiet for this version too.
+      await _notifications.markUpdateNotified(update.version);
     }
   }
 

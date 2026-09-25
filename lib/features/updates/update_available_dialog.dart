@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -85,6 +87,10 @@ class UpdateAvailableDialog extends StatelessWidget {
               const SizedBox(height: 14),
               OneTimeUninstallNotice(targetVersion: update.version),
             ],
+            if (Platform.isAndroid) ...[
+              const SizedBox(height: 12),
+              const _AndroidInstallHint(),
+            ],
           ],
         ),
       ),
@@ -116,6 +122,65 @@ class UpdateAvailableDialog extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Short, self-contained install help shown on Android only.
+///
+/// Covers the two reasons Android's installer rejects a sideloaded Najikify
+/// with *"App not installed as package appears to be invalid"*: a previously
+/// installed build signed with a different key (any release up to 1.0.2, or a
+/// locally built debug APK), and an interrupted download of the ~80 MB universal
+/// APK — for which the release page now offers smaller per-architecture APKs.
+class _AndroidInstallHint extends StatelessWidget {
+  const _AndroidInstallHint();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.android_rounded,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'If Android says the package is invalid',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Uninstall the old Najikify once and install this APK again — an '
+            'older build signed with a different key cannot be replaced in '
+            'place. If the download was interrupted, grab the smaller '
+            'arm64-v8a APK from the release page.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

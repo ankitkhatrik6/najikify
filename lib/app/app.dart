@@ -9,6 +9,7 @@ import '../models/transfer.dart';
 import '../services/discovery_service.dart';
 import '../services/history_service.dart';
 import '../services/network_service.dart';
+import '../services/notification_gateway.dart';
 import '../services/pairing_service.dart';
 import '../services/settings_service.dart';
 import '../services/star_prompt_service.dart';
@@ -26,10 +27,11 @@ class NajikifyApp extends StatefulWidget {
   State<NajikifyApp> createState() => _NajikifyAppState();
 }
 
-class _NajikifyAppState extends State<NajikifyApp> {
+class _NajikifyAppState extends State<NajikifyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Configure transfer service prompt hook
     final transferService = TransferService();
     transferService.onIncomingTransfer = (sender, files, totalBytes, savePath) async {
@@ -54,7 +56,41 @@ class _NajikifyAppState extends State<NajikifyApp> {
     // star dialog (gated inside StarPromptService, never random on startup).
     transferService.onTransferCompleted = _maybeShowStarPromptAfterTransfer;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdatesOnStart());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapUpdates());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // Safety net for desktop (and for phones that never reboot the job):
+    // re-run the throttled check whenever the app comes back to the foreground,
+    // so a release published while Najikify was open still notifies and offers
+    // the update. The 6-hour throttle makes this a no-op most of the time.
+    _checkForUpdatesOnStart();
+  }
+
+  /// One-time update bootstrap: ask for the notification permission, arm the
+  /// Android background check, then run the throttled in-app check.
+  ///
+  /// The permission is requested here (and not only when a notification is
+  /// about to be posted) so the background job can notify the user later, when
+  /// the app is closed — the same behaviour as other apps' update alerts.
+  Future<void> _bootstrapUpdates() async {
+    final notifications = NotificationGateway();
+    try {
+      await notifications.ensurePermission();
+      await notifications.scheduleBackgroundUpdateChecks();
+    } catch (_) {
+      // Notifications are optional; the update flow still works in-app.
+    }
+    if (!mounted) return;
+    await _checkForUpdatesOnStart();
   }
 
   /// Runs the throttled update check after the first frame and offers the new

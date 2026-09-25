@@ -60,6 +60,14 @@ android {
         applicationId = "com.najikify.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
+        //
+        // Android 7.0 (API 24) is the hard floor: file_selector_android,
+        // url_launcher_android and flutter_plugin_android_lifecycle all declare
+        // minSdk 24 in their own manifests, so a lower value fails manifest
+        // merging. Devices older than Android 7 therefore cannot install
+        // Najikify — "App not installed as package appears to be invalid" on such
+        // a device is a platform limit, not a signing problem. The APK is signed
+        // with the v2 + v3 schemes, which is exactly what API 24+ verifies.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION

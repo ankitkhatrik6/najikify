@@ -1,12 +1,9 @@
 package com.najikify.app
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
+import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.flutter.embedding.android.FlutterActivity
@@ -23,17 +20,26 @@ import io.flutter.plugin.common.MethodChannel
  *   "App updates" channel. Tapping it opens [url] (the release download) when
  *   one is supplied.
  * * `openUrl(url)` opens a link in the user's browser.
+ * * `scheduleUpdateCheck()` arms the periodic background release check
+ *   ([UpdateCheckJobService]); `getNotifiedVersion()` / `markUpdateNotified()`
+ *   / `notificationsEnabled()` keep the "announced at most once" bookkeeping in
+ *   sync with the Dart `UpdateService`.
  *
- * Both return `false` instead of throwing when the platform refuses, so the
- * Dart caller can degrade gracefully.
+ * Every method returns `false` (or null) instead of throwing when the platform
+ * refuses, so the Dart caller can degrade gracefully.
  */
 class MainActivity : FlutterActivity() {
 
     private companion object {
         const val CHANNEL_NAME = "najikify/platform"
-        const val NOTIFICATION_CHANNEL_ID = "najikify_updates"
-        const val NOTIFICATION_CHANNEL_NAME = "App updates"
-        const val UPDATE_NOTIFICATION_ID = 1001
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Arm the periodic background update check. This is what makes Najikify
+        // behave like a store-installed app: a new release is announced in the
+        // notification centre on its own, without the user opening the app.
+        UpdateNotifier.schedulePeriodic(this)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -47,6 +53,24 @@ class MainActivity : FlutterActivity() {
         when (call.method) {
             "showNotification" -> result.success(showUpdateNotification(call))
             "openUrl" -> result.success(openUrl(call.argument<String>("url")))
+            // Background update-check bookkeeping, shared with UpdateService.
+            "scheduleUpdateCheck" -> {
+                UpdateNotifier.schedulePeriodic(this)
+                result.success(true)
+            }
+            "getNotifiedVersion" ->
+                result.success(UpdateNotifier.notifiedVersion(this))
+            "markUpdateNotified" -> {
+                val version = call.argument<String>("version")
+                if (version.isNullOrBlank()) {
+                    result.success(false)
+                } else {
+                    UpdateNotifier.markNotified(this, version)
+                    result.success(true)
+                }
+            }
+            "notificationsEnabled" ->
+                result.success(UpdateNotifier.notificationsEnabled(this))
             else -> result.notImplemented()
         }
     }
@@ -57,15 +81,16 @@ class MainActivity : FlutterActivity() {
         if (title.isNullOrBlank() || body.isNullOrBlank()) return false
 
         return try {
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            ensureNotificationChannel(manager)
+            UpdateNotifier.ensureChannel(this)
 
-            val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            val builder = NotificationCompat.Builder(this, UpdateNotifier.CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_update)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                 .setAutoCancel(true)
+                // Re-posting the same update never buzzes twice.
+                .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
             call.argument<String>("url")?.let { url ->
@@ -73,7 +98,7 @@ class MainActivity : FlutterActivity() {
             }
 
             NotificationManagerCompat.from(this)
-                .notify(UPDATE_NOTIFICATION_ID, builder.build())
+                .notify(UpdateNotifier.NOTIFICATION_ID, builder.build())
             true
         } catch (e: Exception) {
             // A notification failure must never surface to the user.
@@ -103,19 +128,5 @@ class MainActivity : FlutterActivity() {
         } catch (e: Exception) {
             false
         }
-    }
-
-    private fun ensureNotificationChannel(manager: NotificationManager) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        if (manager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) != null) return
-
-        val channel = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
-            NOTIFICATION_CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply {
-            description = "Lets you know when a new Najikify version is available"
-        }
-        manager.createNotificationChannel(channel)
     }
 }

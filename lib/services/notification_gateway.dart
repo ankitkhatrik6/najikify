@@ -32,6 +32,70 @@ class NotificationGateway {
   /// True when the platform is able to post system notifications at all.
   bool get isSupported => Platform.isAndroid || Platform.isLinux;
 
+  /// Asks for the notification permission up front (Android 13+).
+  ///
+  /// Called once at startup so that the *background* update check
+  /// (`UpdateCheckJobService`, armed via [scheduleBackgroundUpdateChecks]) is
+  /// able to post its notification later, when the app is not running. A denied
+  /// permission simply means "no system notification"; everything else keeps
+  /// working.
+  Future<bool> ensurePermission() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      var allowed = _notificationsAllowed;
+      if (allowed == null) {
+        final status = await Permission.notification.request();
+        allowed = status.isGranted || status.isLimited;
+        _notificationsAllowed = allowed;
+      }
+      return allowed;
+    } catch (e) {
+      debugPrint('NotificationGateway: permission request failed: $e');
+      return false;
+    }
+  }
+
+  /// Arms the periodic background release check (Android only).
+  ///
+  /// The check runs from a JobScheduler job, so a new Najikify release is
+  /// announced in the notification centre without the user opening the app.
+  /// No-op on Linux, where updates are checked while the app is running.
+  Future<void> scheduleBackgroundUpdateChecks() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<bool>('scheduleUpdateCheck');
+    } catch (e) {
+      debugPrint('NotificationGateway: could not schedule update checks: $e');
+    }
+  }
+
+  /// The version the background check already announced, or `null`.
+  ///
+  /// Shared with [UpdateService.initialize] so a release is announced at most
+  /// once across the Dart and the native check.
+  Future<String?> backgroundNotifiedVersion() async {
+    if (!Platform.isAndroid) return null;
+    try {
+      final version = await _channel.invokeMethod<String>('getNotifiedVersion');
+      return (version == null || version.isEmpty) ? null : version;
+    } catch (e) {
+      debugPrint('NotificationGateway: could not read notified version: $e');
+      return null;
+    }
+  }
+
+  /// Records that [version] has been announced by the Dart side.
+  Future<void> markUpdateNotified(String version) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<bool>('markUpdateNotified', {
+        'version': version,
+      });
+    } catch (e) {
+      debugPrint('NotificationGateway: could not record notified version: $e');
+    }
+  }
+
   /// Posts an "update available" notification.
   ///
   /// [url] is opened when the user taps the notification on Android.
@@ -56,13 +120,7 @@ class NotificationGateway {
   }) async {
     try {
       // Android 13+ requires an explicit runtime grant for notifications.
-      var allowed = _notificationsAllowed;
-      if (allowed == null) {
-        final status = await Permission.notification.request();
-        allowed = status.isGranted || status.isLimited;
-        _notificationsAllowed = allowed;
-      }
-      if (!allowed) return false;
+      if (!await ensurePermission()) return false;
 
       final shown = await _channel.invokeMethod<bool>('showNotification', {
         'title': title,

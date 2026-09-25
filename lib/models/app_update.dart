@@ -72,7 +72,7 @@ class AppUpdate {
 
   /// Picks the artifact for the running platform. Linux prefers the `.deb`
   /// and only falls back to the portable tarball when no `.deb` is published;
-  /// Android uses the `.apk`.
+  /// Android prefers the universal `.apk` over the per-architecture ones.
   static Map<String, dynamic>? _pickPlatformAsset(
     List<Map<String, dynamic>> assets,
   ) {
@@ -91,12 +91,33 @@ class AppUpdate {
     ];
 
     for (final extensions in preferred) {
-      for (final asset in assets) {
-        if (matches(asset, extensions)) return asset;
+      final candidates =
+          assets.where((asset) => matches(asset, extensions)).toList();
+      if (candidates.isEmpty) continue;
+
+      if (Platform.isAndroid) {
+        // Releases ship a universal APK plus smaller per-architecture APKs
+        // (arm64-v8a / armeabi-v7a). The universal one always installs, so it
+        // is the default download; the ABI-specific files stay available from
+        // the release page when a smaller download is wanted. GitHub does not
+        // guarantee asset ordering, hence the explicit filter.
+        return candidates.firstWhere(
+          (asset) => !_abiSuffix.hasMatch(asset['name'] as String? ?? ''),
+          orElse: () => candidates.first,
+        );
       }
+      return candidates.first;
     }
     return null;
   }
+
+  /// Matches the architecture suffix of the per-ABI Android artifacts, e.g.
+  /// `najikify-android-1.0.7-arm64-v8a.apk`. The universal APK
+  /// (`najikify-android-1.0.7.apk`) does not match.
+  static final RegExp _abiSuffix = RegExp(
+    r'-(arm64-v8a|armeabi-v7a|x86_64|x86)\.apk$',
+    caseSensitive: false,
+  );
 
   @override
   String toString() => 'AppUpdate($version, asset: $assetName)';
