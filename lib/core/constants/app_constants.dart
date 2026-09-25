@@ -15,7 +15,7 @@ class AppConstants {
 
   /// Star the repo — used by the "Do you like Najikify?" prompt.
   static const String githubStarUrl =
-      'https://github.com/ankitkhatrik6/najikify/stargazers';
+      'https://github.com/ankitkhatrik6/najikify';
 
   /// Last release that was signed with the Android **debug** key. Installs of
   /// these builds cannot be upgraded in place (Android refuses to replace an

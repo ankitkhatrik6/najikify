@@ -24,7 +24,8 @@ class StarPromptService extends ChangeNotifier {
   StarPromptService._internal();
 
   /// Minimum completed transfers before the prompt can ever appear.
-  static const int minCompletedTransfers = 2;
+  /// Set to 1 so user is prompted right after their very first successful transfer.
+  static const int minCompletedTransfers = 1;
 
   /// Minimum gap between two prompts.
   static const Duration promptInterval = Duration(days: 14);

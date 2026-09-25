@@ -83,6 +83,9 @@ class _NajikifyAppState extends State<NajikifyApp> {
   /// the service gates pass (min transfers, spacing, no pending update).
   /// Never blocks or fails the transfer UI — everything is best-effort.
   void _maybeShowStarPromptAfterTransfer(Transfer completed) {
+    // Only prompt for completed transfers with success status
+    if (completed.status != TransferStatus.completed) return;
+
     final starService = StarPromptService();
     starService.recordCompletedTransfer().then((_) async {
       if (!mounted) return;
@@ -91,6 +94,10 @@ class _NajikifyAppState extends State<NajikifyApp> {
         hasPendingUpdate: hasPendingUpdate,
       );
       if (!show || !mounted) return;
+
+      // Ensure any pending route changes settle before checking root navigator
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
 
       final starContext = rootNavigatorKey.currentState?.context;
       if (starContext == null || !starContext.mounted) return;

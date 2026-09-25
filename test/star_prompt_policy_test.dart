@@ -6,7 +6,7 @@ import 'package:najikify/services/star_prompt_service.dart';
 void main() {
   group('StarPromptService policy', () {
     test('prompt is transfer-triggered with a minimum completion count', () {
-      expect(StarPromptService.minCompletedTransfers, greaterThanOrEqualTo(2));
+      expect(StarPromptService.minCompletedTransfers, greaterThanOrEqualTo(1));
     });
 
     test('repeat prompts are spaced out (interval + every-Nth gate)', () {
