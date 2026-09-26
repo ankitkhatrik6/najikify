@@ -13,6 +13,7 @@ import '../../services/settings_service.dart';
 import '../../services/transfer_service.dart';
 import '../../widgets/device_card.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/network_issue_dialog.dart';
 import '../pairing/qr_display_dialog.dart';
 import '../pairing/qr_scanner_screen.dart';
 import '../updates/update_banner.dart';
@@ -85,10 +86,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (entriesToSend.isNotEmpty) {
-      await transferService.sendFiles(
-        peerDevice: targetDevice,
-        entries: entriesToSend,
-      );
+      try {
+        await transferService.sendFiles(
+          peerDevice: targetDevice,
+          entries: entriesToSend,
+        );
+      } catch (e) {
+        // e.g. the peer is on a different Wi-Fi network: explain it instead of
+        // leaving a transfer card that fails with a socket error.
+        if (context.mounted) {
+          await NetworkIssueDialog.show(context, e);
+        }
+        return;
+      }
 
       // Navigate to Transfers tab to watch live progress
       if (widget.onNavigateTab != null) {
@@ -465,10 +475,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   leading: const Icon(Icons.devices_rounded),
                   title: Text(d.name),
                   subtitle: Text('${d.platform.displayName} • ${d.ipAddress}'),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.of(ctx).pop();
-                    transferService.sendFiles(peerDevice: d, entries: entries);
-                    widget.onNavigateTab?.call(1);
+                    try {
+                      await transferService.sendFiles(
+                        peerDevice: d,
+                        entries: entries,
+                      );
+                      widget.onNavigateTab?.call(1);
+                    } catch (e) {
+                      // Cross-network / stale device: say why, do not open an
+                      // empty Transfers tab.
+                      if (context.mounted) {
+                        await NetworkIssueDialog.show(context, e);
+                      }
+                    }
                   },
                 ),
               ),

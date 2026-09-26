@@ -9,8 +9,10 @@ import 'package:uuid/uuid.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constants/network_constants.dart';
 import '../core/errors/app_exceptions.dart';
+import '../core/errors/error_handler.dart';
 import '../core/utils/crypto_utils.dart';
 import '../core/utils/file_utils.dart';
+import '../core/utils/network_utils.dart';
 import '../models/device.dart';
 import '../models/transfer.dart';
 import '../models/transfer_file.dart';
@@ -234,7 +236,13 @@ class TransferService extends ChangeNotifier {
     final isValid = _pairingService.validateIncomingPairing(data);
     if (!isValid) {
       request.response.statusCode = HttpStatus.forbidden;
-      request.response.write(jsonEncode({'accepted': false, 'message': 'Invalid or expired pairing session'}));
+      request.response.write(jsonEncode({
+        'accepted': false,
+        'code': 'PAIRING_SESSION_INVALID',
+        'message': _pairingService.activeHostSession == null
+            ? 'This device is not showing a pairing code right now. Open Connect Device > Show my QR code here first.'
+            : 'That pairing code has expired. Show a fresh QR code on this device and scan it again.',
+      }));
       await request.response.close();
       return;
     }
@@ -252,8 +260,21 @@ class TransferService extends ChangeNotifier {
 
     await _db.saveOrUpdateDevice(peerDevice);
 
+    // Make the pairing *mutual* in the UI as well: the device that scanned the
+    // QR code must appear in this device's device list immediately, not only
+    // after the next UDP announcement (which never arrives at all when the two
+    // devices are on different networks).
+    _discoveryService.registerManualDevice(peerDevice);
+
     request.response.headers.contentType = ContentType.json;
-    request.response.write(jsonEncode({'accepted': true, 'message': 'Pairing confirmed'}));
+    request.response.write(jsonEncode({
+      'accepted': true,
+      'message': 'Pairing confirmed',
+      // Echoed back so the scanner can verify it reached the device whose QR
+      // code it scanned instead of a stranger reusing that address.
+      'deviceId': _settingsService.deviceId,
+      'fingerprint': _settingsService.fingerprint,
+    }));
     await request.response.close();
   }
 
@@ -517,6 +538,19 @@ class TransferService extends ChangeNotifier {
       throw const NajikifyException('No files selected to send.');
     }
 
+    // Pre-flight network guard: a peer that lives on another network (different
+    // Wi-Fi, different router, mobile data) can never be reached, so say so
+    // before a transfer card appears and silently fails. A same-subnet peer
+    // that is merely not answering yet is allowed through — the transfer
+    // itself then reports that case with the proper message.
+    final report = await NetworkUtils.checkPeer(
+      peerIp: peerDevice.ipAddress,
+      peerPort: peerDevice.port,
+      deviceName: peerDevice.name,
+    );
+    final networkFailure = networkFailureFor(report);
+    if (networkFailure != null) throw networkFailure;
+
     final transferId = const Uuid().v4();
     int totalBytes = 0;
 
@@ -586,6 +620,18 @@ class TransferService extends ChangeNotifier {
 
       final hsData = HandshakeResponse.fromJson(jsonDecode(hsRes.body) as Map<String, dynamic>);
       final sessionToken = hsData.sessionToken;
+
+      // Never stream files to an address that answers with a *different* device
+      // identity: after a network change a stale IP often belongs to another
+      // device (typically another Najikify install), and the files would land
+      // on a stranger's phone.
+      if (hsData.deviceId.isNotEmpty && hsData.deviceId != peer.id) {
+        throw PeerIdentityMismatchException(
+          peer.name,
+          'The device at ${peer.ipAddress} is not ${peer.name}. Its address was '
+          'probably taken over by another device — pair again with a QR code.',
+        );
+      }
 
       // 2. Transfer init request
       final initUri = Uri.parse('${peer.httpBaseUrl}${NetworkConstants.endpointTransferRequest}');
@@ -752,7 +798,9 @@ class TransferService extends ChangeNotifier {
       if (current != null && current.state != TransferState.cancelled) {
         final failed = current.copyWith(
           state: TransferState.failed,
-          errorMessage: e.toString(),
+          // Raw `SocketException` strings are unreadable; map them to the
+          // "same Wi-Fi?" style guidance the user can act on.
+          errorMessage: ErrorHandler.getUserFriendlyMessage(e),
           speed: 0,
           etaSeconds: 0,
         );
