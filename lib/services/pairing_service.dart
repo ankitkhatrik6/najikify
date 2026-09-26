@@ -6,6 +6,7 @@ import '../core/constants/app_constants.dart';
 import '../core/constants/network_constants.dart';
 import '../core/errors/app_exceptions.dart';
 import '../core/utils/crypto_utils.dart';
+import '../core/utils/network_utils.dart';
 import '../models/device.dart';
 import '../models/pairing_session.dart';
 import 'database_service.dart';
@@ -51,15 +52,30 @@ class PairingService extends ChangeNotifier {
   }
 
   /// Processes scanned QR code URI and initiates mutual handshake with peer.
+  ///
+  /// Before the handshake the peer address is checked against this device's own
+  /// networks: two devices on different Wi-Fi networks (or with one of them on
+  /// mobile data) can never complete the request, so the user is told exactly
+  /// that instead of waiting for a timeout and reading a vague error.
   Future<Device> processScannedQr(String qrUri, {bool trustDevice = false}) async {
     final session = PairingSession.fromQrUri(qrUri);
     if (session == null) {
-      throw const PairingException('Invalid or expired pairing QR code.');
+      throw const PairingException(
+          'Invalid or expired pairing QR code. Ask the other device to show a fresh code.');
     }
 
     if (session.deviceId == _settingsService.deviceId) {
       throw const PairingException('Cannot pair with yourself.');
     }
+
+    // Fail fast (and precisely) when the two devices cannot see each other.
+    final report = await NetworkUtils.checkPeer(
+      peerIp: session.ipAddress,
+      peerPort: session.port,
+      deviceName: session.deviceName,
+    );
+    final networkFailure = networkFailureFor(report);
+    if (networkFailure != null) throw networkFailure;
 
     // Attempt HTTP handshake with remote peer using the temporary pairing credentials
     final targetUrl = Uri.parse('http://${session.ipAddress}:${session.port}${NetworkConstants.endpointPairingRequest}');
@@ -93,14 +109,29 @@ class PairingService extends ChangeNotifier {
         throw PairingException(resData['message'] as String? ?? 'Pairing was declined by peer.');
       }
 
+      // The address we dialled must really belong to the device the QR code
+      // came from. On a different network that address can be a stranger's
+      // device (usually another Najikify install).
+      final responderId = resData['deviceId'] as String?;
+      if (responderId != null &&
+          responderId.isNotEmpty &&
+          responderId != session.deviceId) {
+        throw PeerIdentityMismatchException(session.deviceName);
+      }
+
       final peerDevice = session.toDevice(isTrusted: trustDevice);
       await _db.saveOrUpdateDevice(peerDevice);
       _discoveryService.registerManualDevice(peerDevice);
 
       return peerDevice;
     } catch (e) {
-      if (e is PairingException) rethrow;
-      throw PairingException('Failed to reach ${session.deviceName} at ${session.ipAddress}:${session.port}. Check local network.');
+      // Our own exceptions already carry an actionable message.
+      if (e is NajikifyException) rethrow;
+      if (!report.isReachable) {
+        throw PairingException(report.message);
+      }
+      throw PairingException(
+          'Failed to reach ${session.deviceName} at ${session.ipAddress}:${session.port}. Check that Najikify is open there and both devices are on the same Wi-Fi network.');
     }
   }
 

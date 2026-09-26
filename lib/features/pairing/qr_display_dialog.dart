@@ -127,6 +127,35 @@ class _QrDisplayDialogState extends State<QrDisplayDialog> {
                 label: const Text('Refresh networks'),
               ),
             ],
+            // A QR code is only useful when this device really has a Wi-Fi or
+            // LAN address to put in it (127.0.0.1 is useless to a scanner).
+            if (_session.ipAddress.startsWith('127.'))
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi_off_rounded,
+                        size: 18, color: colorScheme.onErrorContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'No Wi-Fi/LAN address found. Connect this device to a '
+                        'Wi-Fi network before scanning this code.',
+                        style: TextStyle(
+                          color: colorScheme.onErrorContainer,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(

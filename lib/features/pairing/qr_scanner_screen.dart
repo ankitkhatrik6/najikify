@@ -9,8 +9,10 @@ import 'package:image/image.dart' as img;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:zxing2/qrcode.dart' as zxing;
+import '../../core/errors/app_exceptions.dart';
 import '../../core/utils/qr_payload_utils.dart';
 import '../../services/pairing_service.dart';
+import '../../widgets/network_issue_dialog.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -255,11 +257,21 @@ class _QrScannerScreenState extends State<QrScannerScreen>
         Navigator.of(context).pop(device);
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString().replaceFirst('NajikifyException: ', '');
-          _isProcessing = false;
-        });
+      if (!mounted) return;
+      setState(() {
+        _errorMessage =
+            e is NajikifyException ? e.message : e.toString();
+        _isProcessing = false;
+      });
+
+      // Network problems get a dialog on top of the inline message: they are
+      // actionable ("both devices must share one Wi-Fi network") and the user
+      // would otherwise only see the code fail again and again.
+      final isNetworkIssue = e is DifferentNetworkException ||
+          e is NetworkUnavailableException ||
+          e is PeerIdentityMismatchException;
+      if (isNetworkIssue) {
+        await NetworkIssueDialog.show(context, e);
       }
     }
   }
