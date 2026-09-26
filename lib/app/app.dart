@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants/app_constants.dart';
+import '../features/splash/splash_screen.dart';
 import '../features/transfers/incoming_transfer_dialog.dart';
 import '../features/updates/star_prompt_dialog.dart';
 import '../features/updates/update_available_dialog.dart';
@@ -15,7 +16,6 @@ import '../services/settings_service.dart';
 import '../services/star_prompt_service.dart';
 import '../services/transfer_service.dart';
 import '../services/update_service.dart';
-import 'router.dart';
 import 'theme.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -170,7 +170,9 @@ class _NajikifyAppState extends State<NajikifyApp> with WidgetsBindingObserver {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: settings.settings.themeMode,
-            home: const MainNavigationScaffold(),
+            // Brand moment + first-frame cover: the app shell is pushed by the
+            // splash once its ripple animation has played.
+            home: const SplashScreen(),
           );
         },
       ),
