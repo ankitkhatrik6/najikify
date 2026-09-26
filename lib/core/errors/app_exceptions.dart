@@ -1,3 +1,5 @@
+import '../utils/network_utils.dart';
+
 /// Base exception class for Najikify application.
 /// Can also be used directly for generic Najikify errors.
 class NajikifyException implements Exception {
@@ -57,4 +59,61 @@ class SecurityValidationException extends NajikifyException {
 
 class PairingException extends NajikifyException {
   const PairingException(super.message) : super(code: 'PAIRING_FAILED');
+}
+
+/// The peer answered with an identity that was not the one we paired with
+/// (a stale IP address, e.g. after switching networks, now belongs to another
+/// device — normally another Najikify install). Transfers must not start.
+class PeerIdentityMismatchException extends NajikifyException {
+  final String deviceName;
+  const PeerIdentityMismatchException(
+    this.deviceName, [
+    String message =
+        'The device answering at that address is not the device you paired with. '
+        'Its IP address was probably reused by another device — reconnect with a '
+        'fresh QR code.',
+  ]) : super(message, code: 'PEER_IDENTITY_MISMATCH');
+}
+
+/// The two devices cannot talk to each other because they are not on the same
+/// local network (different Wi-Fi networks, different routers, or one device is
+/// on mobile data). Carries the subnets so the UI can show them concretely.
+class DifferentNetworkException extends NajikifyException {
+  final String? deviceName;
+  final String? peerNetwork;
+  final String? localNetwork;
+
+  const DifferentNetworkException(
+    super.message, {
+    this.deviceName,
+    this.peerNetwork,
+    this.localNetwork,
+    super.details,
+  }) : super(code: 'DIFFERENT_NETWORK');
+}
+
+/// Maps a [PeerNetworkReport] to the exception that should be thrown, or null
+/// when the peer is fine to talk to.
+///
+/// Keeping the mapping here (instead of at every call site) means the QR
+/// scanner, the device list and the send engine all describe a cross-network
+/// peer in exactly the same way.
+NajikifyException? networkFailureFor(PeerNetworkReport report) {
+  switch (report.verdict) {
+    case PeerNetworkVerdict.reachable:
+    case PeerNetworkVerdict.unreachable:
+      // Unreachable is not fatal up front: the peer may just need a moment
+      // (screen wake, app start). The transfer itself reports that case.
+      return null;
+    case PeerNetworkVerdict.noLocalNetwork:
+      return NetworkUnavailableException(report.message);
+    case PeerNetworkVerdict.differentNetwork:
+      return DifferentNetworkException(
+        report.message,
+        deviceName: report.peerName,
+        peerNetwork: report.peerNetworkLabel,
+        localNetwork: report.localNetworkLabel,
+        details: report,
+      );
+  }
 }
