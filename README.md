@@ -71,6 +71,8 @@ Everything happens device-to-device. There is no server in the middle, nothing t
 | **Cross-platform** | Linux desktop and Android from a single Flutter codebase. |
 | **Self-updating** | Checks GitHub Releases for newer builds, notifies on Android/Linux, and offers the download in-app. On Android a background job posts the update notification even when the app is closed. |
 | **Community prompt** | After a successful transfer, occasionally asks for a GitHub star — rate-us style, never nagging, and it waits for you to close it. |
+| **Network-aware** | Before pairing or sending, the peer address is checked against this device's own subnets (and probed with a TCP connect). A device on another Wi-Fi network is reported as **different network** — with both networks named — instead of timing out. |
+| **Animated start** | An AirDrop-style ripple splash around the Najikify mark while the local session comes up. |
 
 ## Supported Platforms
 
@@ -193,6 +195,7 @@ sequenceDiagram
 3. **Transfer.** Files stream over HTTP to the receiver. Progress, speed and ETA update live on both ends.
 4. **Verification.** Checksums are compared per file. Conflicts resolve via replace, keep-both, or skip.
 5. **History.** Each side records the transfer in a local SQLite database (`sqflite` on Android, `sqflite_common_ffi` on desktop).
+6. **Network check.** Before a pairing or transfer starts, the peer address is compared with this device's own subnets (real netmasks on Android, `ip -o -4 addr` on Linux) and probed with a TCP connect to `53317`. An address that cannot possibly belong to this network is reported as **different network**, naming both networks. The device id in the handshake answer is verified too, so a stale address that now belongs to another device is never written to.
 
 ### Ports
 
@@ -208,6 +211,15 @@ For a successful transfer, make sure that:
 - Both devices are on the **same subnet**.
 - **Client / AP isolation is disabled** on the router or access point. It blocks device-to-device traffic.
 - Firewalls allow **`53317/tcp`** and **`53318/udp`** on both devices.
+
+**Mobile data is never enough.** Najikify is a LAN tool: the two devices must be able to reach each other directly. Two Wi-Fi networks are only the same LAN when they belong to the *same router* (2.4 GHz and 5 GHz of one router share it; two different routers, two hotspots or a phone on 4G/5G plus a phone on Wi-Fi do not).
+
+Since **1.0.8** the app verifies this for you and refuses early with an explanation:
+
+- Before a QR pairing or a transfer, the peer address is compared with this device's own addresses and prefix lengths (**real netmasks** from `LinkProperties` on Android, `ip -o -4 addr` on Linux) and probed with a short TCP connect to `53317`.
+- A peer that lies outside every local subnet is reported as **“Different network detected”**, naming this device's network and the peer's network, e.g. `192.168.1.x` vs `192.168.4.x`.
+- A peer that is inside the subnet but silent is reported as unreachable instead, so you fix the right thing.
+- A routed or VPN path still works — if the peer answers the probe, the transfer proceeds.
 
 ## Development
 
@@ -294,6 +306,31 @@ najikify/
 | File handling | `file_selector`, `desktop_drop`, `path_provider` |
 
 ## Troubleshooting
+
+<details>
+<summary><b>“Different network detected” — the device is listed but nothing transfers</b></summary>
+
+<br />
+
+The device is known (paired by QR code or remembered from an earlier session) but
+it is not on this network: another Wi-Fi SSID, another router, or mobile data.
+Najikify shows **Different network detected** and names both networks, for
+example *this device `192.168.1.x`* against *other device `192.168.4.x`*.
+
+- Put both devices on the **same** Wi-Fi router. 2.4 GHz and 5 GHz of one router
+  share the LAN; two different routers do not.
+- Or enable a **hotspot** on one device and join it from the other.
+- Guest networks, hotel/hospital Wi-Fi and carrier networks block
+  device-to-device traffic even when the SSID looks familiar.
+- Remembered devices keep their last known address, so **re-pair with a fresh QR
+  code** after changing networks.
+
+Before 1.0.8 this case looked like "the device shows up but the transfer just
+never starts" (both in the device list and after a QR scan). Since 1.0.8 the
+check runs *before* anything starts, and the QR scanner also registers the
+scanning device on the host, so both devices list each other after pairing.
+
+</details>
 
 <details>
 <summary><b>Devices don't see each other</b></summary>
