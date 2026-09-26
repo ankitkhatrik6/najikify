@@ -71,6 +71,9 @@ class MainActivity : FlutterActivity() {
             }
             "notificationsEnabled" ->
                 result.success(UpdateNotifier.notificationsEnabled(this))
+            // Local IPv4 addresses with real netmasks, used to tell whether a
+            // peer could be on this network (see NetworkInspector).
+            "getLinkAddresses" -> result.success(NetworkInspector.linkAddresses(this))
             else -> result.notImplemented()
         }
     }
